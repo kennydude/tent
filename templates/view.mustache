@@ -1,0 +1,21 @@
+<h1>{{ room }}</h1>
+<p class="public">Currently Public! :)</p>
+<p>You can request to join <a href="/">from the front page</a> with a room name of {{ room }}</p>
+<div class="hide alert-box alert non-public">Not public. You won't see any new messages until the room is public again.</div>
+<div class="hide panel hide-on-connect"><p>You seem to have dropped out. Please wait while we connect you again</p><img src="/assets/wait.gif" /></div>
+<div class="row">
+	<div id="thechat" class="nine columns">
+		
+	</div>
+	<div class="three columns">
+		<div class="peopleHere">
+		</div>
+	</div>
+</div>
+<script type="text/javascript" src="/assets/hogan.js"></script>
+<script type="text/javascript" src="/assets/md5.js"></script>
+<script type="text/javascript" src="/assets/basechat.js"></script>
+<script>
+moreRoom = "/view";
+$(".non-public").hide();
+</script>

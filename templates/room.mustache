@@ -1,0 +1,101 @@
+<h1>{{ room }}</h1>
+<h6 class="public hide">Public on <a href="/view/{{ room }}">/view/{{ room }}</a></h6>
+<div class="hide panel hide-on-connect"><p>You seem to have dropped out. Please wait while we connect you again</p><img src="/assets/wait.gif" /></div>
+<div class="row">
+	<div id="thechat" class="nine columns">
+		
+	</div>
+	<div class="three columns">
+		<div class="hide manager panel">
+			<label for="public_room">
+				<input type="checkbox" id="public_room" />
+				Public Room
+			</label>
+		</div>
+		<div class="me panel">
+			nick:<br/>
+			<input type="text" id="nickname" value="{{ name }}" class="nickname" />
+		</div>
+		<div class="requests">
+			
+		</div>
+		<div class="peopleHere">
+		</div>
+	</div>
+</div>
+{{=<% %>=}}
+<!-- Templates -->
+<div class="reqTemplate hide">
+	<div class="panel">
+		{{ nickname }} wants to talk
+		{{#info}}<br/>
+			<small>{{ info }}</small><br/>
+		{{/info}}
+		<a class="tiny button success allow">ok</a>
+		<a class="tiny button alert deny">no</a>
+	</div>
+</div>
+<%={{ }}=%>
+<div id="composer_box">
+	<input type="text" id="composer" placeholder="talk here" />
+</div>
+<script type="text/javascript" src="/assets/jquerypp.js"></script>
+<script type="text/javascript" src="/assets/hogan.js"></script>
+<script type="text/javascript" src="/assets/md5.js"></script>
+<script type="text/javascript" src="/assets/basechat.js"></script>
+<script>
+String.prototype.replaceAll=function(s1, s2) {return this.split(s1).join(s2)}
+
+moreRoom = "/room";
+var myNickName = "{{ name }}";
+var myTicket = "{{ ticket }}";
+
+var reqTemplate = Hogan.compile($(".reqTemplate").html());
+
+$(document).ready(function(){
+	$("#nickname").on("keydown", function(e){
+		if(e.keyName() == "\r"){
+			socket.emit("nick", {"new": $("#nickname").val()});
+			renameUser({"nickname" : $("#nickname").val(),"ticket" : myTicket});
+			myNickName = $("#nickname").val();
+		}
+	});
+	$("#composer").on("keydown", function(e){
+		if(e.keyName() == "\r"){
+			data = {"message":$("#composer").val(), "nickname":myNickName};
+			socket.emit("msg", data);
+			$("#composer").val("");
+		}
+	});
+	$("#public_room").on("change",function() {
+		socket.emit("public", {"public" : $("#public_room").attr("checked") != undefined});
+		if( $("#public_room").attr("checked") != undefined ){
+			$(".public").show();
+		} else{
+			$(".public").hide();
+		}
+	});
+
+	socket.on("manager", function(){
+		$("<style>").html(".manager{display:block !important;}").appendTo("head");
+	});
+	socket.on("kick", function(){
+		alert("You were kicked");
+		document.location.href = "/";
+	});
+
+	socket.on("nock", function(data){
+		d = $( reqTemplate.render(data) ).appendTo(".requests");
+
+		$(".allow", d).click(function(){
+			socket.emit("allow", {"ticket":$(this).data("ticket")});
+			$(this).parent().remove();
+		}).data("ticket", data.ticket);
+
+		$(".deny", d).text("no").click(function(){
+			socket.emit("deny", {"ticket":$(this).data("ticket")});
+			$(this).parent().remove();
+		}).data("ticket", data.ticket);
+	});
+});
+</script>
