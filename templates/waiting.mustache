@@ -1,0 +1,14 @@
+<h1>Please wait</h1>
+<p>The bouncer is asking the manager if you are allowed in</p>
+<p>If you navigate away, you will have to start again</p>
+<img src="/assets/wait.gif" />
+<div class="hide rejected callout">Sorry, you were not accepted</div>
+<script type="text/javascript">
+moreRoom = "/outside";
+
+$(document).ready(function(){
+	socket.on("allow", function(data){
+		document.location.href = "/room/" + data.room + "?ticket=" + data.ticket + "&name={{ name }}";
+	});
+});
+</script>

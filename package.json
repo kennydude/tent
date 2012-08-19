@@ -1,0 +1,12 @@
+{
+    "name": "Tent",
+    "description": "Chat Server",
+    "version": "1.0.0",
+    "node": "0.6.17",
+    "dependencies": {
+        "socket.io" : ">=0.9",
+        "HTTPRequest": ">=0.0.9",
+        "express": ">=3.0.0beta6",
+	"hogan.js" : ">=2.0"
+    }
+}

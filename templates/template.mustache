@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+
+<!-- paulirish.com/2008/conditional-stylesheets-vs-css-hacks-answer-neither/ -->
+<!--[if lt IE 7]> <html class="no-js lt-ie9 lt-ie8 lt-ie7" lang="en"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js lt-ie9 lt-ie8" lang="en"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js lt-ie9" lang="en"> <![endif]-->
+<!--[if gt IE 8]><!--> <html lang="en"> <!--<![endif]-->
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Tent</title>
+	<link rel="stylesheet" href="/assets/foundation.css">
+	<style>
+	#composer_box{
+		position: fixed;
+		background: #EEE;
+		padding: 4px 20px;
+		box-shadow: 0px 0px 9px #ccc;
+		bottom: 0; left:0;right:0;
+	}
+	#thechat{ margin-bottom: 60px;}
+	.chatRow{
+		border-bottom: 1px solid #CCC;
+		margin-bottom: 4px;
+		padding-bottom: 4px;
+		font-size: 12px;
+		padding-top: 4px;
+	}
+	.hide{display:none;}
+	.topbar{background: #333;color:#fff;font-size:75%; padding:5px;margin-bottom:5px;}
+	</style>
+</head>
+<body>
+	<script type="text/javascript" src="/assets/jquery.js"></script>
+	<div class="container">
+		<div class="topbar">
+			Tent <small title="You are connected to the tent" class="hide show-on-connect label success">:)</small>
+			<small title="You are not connected to the tent :(" class="hide hide-on-connect label alert">:(</small>
+		</div>
+		<div class="row">
+			{{& content }}
+		</div>
+	</div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+if(window.moreRoom == undefined){ moreRoom = ''; }
+url = 'http://' + document.location.host + moreRoom;
+console.log(url);
+var socket = io.connect(url);
+
+socket.on('connect', function () {
+	$(".hide-on-connect").hide();
+	$(".show-on-connect").show();
+});
+socket.on('disconnect', function () {
+	$(".hide-on-connect").show();
+	$(".show-on-connect").hide();
+});
+socket.on('connect_failed', function () {
+	$(".hide-on-connect").show();
+	$(".show-on-connect").hide();
+});
+socket.on('reconnect', function () {
+	$(".hide-on-connect").hide();
+	$(".show-on-connect").show();
+});
+
+socket.on("reject", function(){
+	$(".rejected").show();
+});
+
+socket.on('servermsg', function (data) {
+	if(data.event == "closedown"){
+		$("#closedown").show();
+	}
+});
+</script>
+</body>
