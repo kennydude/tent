@@ -9,9 +9,9 @@ function Tents(io){
 /**
  * Are we allowed entry? True/False
  */
-Tents.prototype.canGainEntry = function(room, ticket){
+Tents.prototype.canGainEntry = function(room, ticket, check_soiled){
 	if(this.rooms[room] == undefined) return false;
-	if(!this.rooms[room].hasEntryTicket(ticket)) return false;
+	if(!this.rooms[room].hasEntryTicket(ticket, check_soiled)) return false;
 
 	return true; 
 };
@@ -54,6 +54,7 @@ Tents.prototype.roomExists = function(room){
 }
 
 Tents.prototype.removeRoom = function(room){
+	this.io.of("/view").in(room).emit("public", {"public":false});
 	delete this.rooms[room];
 }
 
@@ -66,7 +67,23 @@ function Room(tent, room_name){
 	this.room_name = room_name;
 	this.tickets = [];
 	this.public = false;
+	this.history = [];
 }
+
+Room.prototype.pushHistory = function(h) {
+	while(this.history.length > 5){
+		this.history.shift();
+	}
+	this.history.push(h);
+};
+
+Room.prototype.getHistory = function() {
+	return this.history;
+};
+
+Room.prototype.removeHistory = function() {
+	this.history = [];
+};
 
 Room.prototype.isPublic = function() {
 	return this.public;
@@ -107,9 +124,9 @@ Room.prototype.doManagerCheck = function(){
 /**
  * Does this room have the specified ticket?
  */
-Room.prototype.hasEntryTicket = function(ticket) {
+Room.prototype.hasEntryTicket = function(ticket, check_soiled) {
 	if(this.tickets[ticket] == undefined) return false;
-	return this.tickets[ticket].canGainEntry();
+	return this.tickets[ticket].canGainEntry(check_soiled);
 };
 
 Room.prototype.notifyManager = function(ticket) {
@@ -129,10 +146,16 @@ function Ticket(name, room){
 	this.state = "new";
 	this.tid = name;
 	this.room = room;
+	this.soiled = false;
 }
 
-Ticket.prototype.canGainEntry = function() {
-	return this.state == "entry" || this.state == "manager";
+Ticket.prototype.soil = function() {
+	this.soiled = true;
+};
+
+Ticket.prototype.canGainEntry = function(check_soiled) {
+	if(this.soiled && check_soiled == true){ return false; }
+	return (this.state == "entry" || this.state == "manager");
 };
 
 Ticket.prototype.isManager = function() {

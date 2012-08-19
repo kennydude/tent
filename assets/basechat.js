@@ -11,7 +11,7 @@ var userTemplate = Hogan.compile('<div class="row" id="user-{{ ticket }}">' +
 '			{{ nickname }}' +
 '		</div>' +
 '		<div class="manager hide">' +
-'			<a class="kick">kick</a>' +
+'			<a class="kick" href="#">kick</a>' +
 '		</div>' +
 '	</div>');
 
@@ -31,6 +31,9 @@ function colorHash(str){
 
 function addMsg(data){
 	d = $("<div>").html(chatTemplate.render(data)).appendTo("#thechat");
+	if(data.history != undefined){
+		d.addClass("old");
+	}
 	$(".theRow", d).css("border-left", "3px solid " + colorHash(data.nickname));
 	document.body.scrollTop = d.offset().top;
 }
@@ -59,11 +62,17 @@ $(document).ready(function(){
 		}
 	});
 
+	socket.on("clearusers", function() {
+		$(".peopleHere").html('');
+	});
+
 	socket.on("rename", function(data){
 		renameUser(data);
 	});
 	socket.on("hi", function(data){
-		doUEvent( $( userTemplate.render( data ) ).appendTo(".peopleHere"), data );
+		if($("#user-" + data.ticket).size() == 0){
+			doUEvent( $( userTemplate.render( data ) ).appendTo(".peopleHere"), data );
+		}
 	});
 	socket.on("goodbye", function(data){
 		$("#user-" + data.ticket, ".peopleHere").remove();

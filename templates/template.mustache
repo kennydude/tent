@@ -18,6 +18,9 @@
 		box-shadow: 0px 0px 9px #ccc;
 		bottom: 0; left:0;right:0;
 	}
+	.old{
+		color: #ccc;
+	}
 	#thechat{ margin-bottom: 60px;}
 	.chatRow{
 		border-bottom: 1px solid #CCC;
@@ -27,15 +30,16 @@
 		padding-top: 4px;
 	}
 	.hide{display:none;}
-	.topbar{background: #333;color:#fff;font-size:75%; padding:5px;margin-bottom:5px;}
+	.topbar a{ color: #fff !important;}
+	.topbar{background: #333;color:#fff !important;font-size:75%; padding:5px;margin-bottom:5px;}
 	</style>
 </head>
 <body>
 	<script type="text/javascript" src="/assets/jquery.js"></script>
 	<div class="container">
 		<div class="topbar">
-			Tent <small title="You are connected to the tent" class="hide show-on-connect label success">:)</small>
-			<small title="You are not connected to the tent :(" class="hide hide-on-connect label alert">:(</small>
+			<a title="Tent is a place to discuss things. It's open-source too">Tent</a> <small title="You are connected to the tent" class="hide show-on-connect label success">:)</small>
+			<small title="You are not connected to the tent :(" class="hide-on-connect label alert">:(</small>
 		</div>
 		<div class="row">
 			{{& content }}

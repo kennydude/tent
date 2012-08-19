@@ -50,9 +50,12 @@ function do_403(res){
 
 app.get("/room/:id", function(req,res){
 	// Are we allowed in?
-	if(!rooms.canGainEntry(req.params.id, req.query.ticket)){
-		do_403(res);
+	if(!rooms.canGainEntry(req.params.id, req.query.ticket, true)){
+		do_403(res); return;
 	}
+
+	// Void the ticket
+	rooms.getTicket(req.params.id, req.query.ticket).soil();
 	
 	view(req,res,{"status":"ok","now":"connect to websocket","ticket":req.query.ticket,"room":req.params.id,"port":appPort,"name":req.query.name},"room");
 });
@@ -65,20 +68,24 @@ app.get("/bouncer", function(req,res){
 
 		res.redirect("/room/" + req.query.room + "?ticket=" + ticket.getName() + "&name=" + req.query.name);
 	} else{
-		ticket = rooms.getRoom(req.query.room).newTicket();
+		if(req.query.sure != undefined){
+			ticket = rooms.getRoom(req.query.room).newTicket();
 
-		io.of('/room').in("manager-" + req.query.room).emit("nock", {
-			"ticket":ticket.getName(),
-			"nickname":req.query.name,
-			"info":req.query.info
-		});
-		
-		res.redirect("/outside/" + req.query.room + "?ticket=" + ticket.getName() + "&name=" + req.query.name);
+			io.of('/room').in("manager-" + req.query.room).emit("nock", {
+				"ticket":ticket.getName(),
+				"nickname":req.query.name,
+				"info":req.query.info
+			});
+			
+			res.redirect("/outside/" + req.query.room + "?ticket=" + ticket.getName() + "&name=" + req.query.name);
+		} else{
+			view(req, res, {"status" : "exists", "room" : req.query.room, "name": req.query.name,"info":req.query.info}, "exists");
+		}
 	}
 });
 
 app.get("/outside/:room", function(req,res){
-	if(rooms.canGainEntry(req.params.room, req.query.ticket)){
+	if(rooms.canGainEntry(req.params.room, req.query.ticket, false)){
 		res.redirect("/rooms/" + req.params.room + "?ticket=" + req.query.ticket + "&name=" + req.query.name);
 	}
 	if(!rooms.ticketExists(req.params.room, req.query.ticket)){ do_403(); return; }
@@ -91,8 +98,8 @@ app.get("/assets/:file", function(req,res){
 });
 
 app.get("/view/:room", function(req,res){
-	if(!rooms.roomExists(req.params.room)){ do_403(res); return; }
-	if(!rooms.getRoom(req.params.room).isPublic()){ do_403(res); return; }
+	//if(!rooms.roomExists(req.params.room)){ do_403(res); return; }
+	//if(!rooms.getRoom(req.params.room).isPublic()){ do_403(res); return; }
 
 	view(req,res,{"status":"ok", "room" : req.params.room},"view");
 });
@@ -113,7 +120,18 @@ io.of("/view").authorization(function (handshakeData, callback) {
 }).on('connection', function (socket) {
 	socket.join(socket.handshake.room);
 
-	here = io.of("/room").in(socket.handshake.room).clients();
+	if(!rooms.roomExists(socket.handshake.room)){
+		socket.emit("public", {"public":false});
+	} else{
+		history = rooms.getRoom(socket.handshake.room).getHistory();
+		for(h in history){
+			h = history[h];
+			h['history'] = true;
+			socket.emit("msg", h);
+		}
+	}
+
+	here = io.of("/room").clients(socket.handshake.room);
 	for(p in here){
 		p = here[p];
 		p.get("nickname", function(e, nick){
@@ -149,7 +167,7 @@ io.of('/room').authorization(function (handshakeData, callback) {
 		p = p[p.length-1];
 		ticket = u.query.ticket;
 
-		if(!rooms.canGainEntry(p, ticket)){ callback(null, false); return; }
+		if(!rooms.canGainEntry(p, ticket, false)){ callback(null, false); return; }
 	
 		handshakeData.join_room = p;
 		handshakeData.nick = u.query.name;
@@ -186,12 +204,25 @@ io.of('/room').authorization(function (handshakeData, callback) {
 		socket.on("kick", function(data){
 			socket.get("room", function(e, d){
 				rooms.getRoom(d).removeTicket(data.ticket);
+				inRoomBroadcast(d, "goodbye", {"ticket":data.ticket});
 			});
 		});
 
 		socket.on("public", function(data) {
 			socket.get("room", function(e, d){
 				rooms.getRoom(d).makePublic(data.public);
+
+				if(data.public){
+					here = io.of("/room").in(socket.handshake.join_room).clients();
+					io.of("/view").in(d).emit("clearusers", {});
+					for(p in here){
+						p = here[p];
+						p.get("nickname", function(e, nick){
+							io.of("/view").in(d).emit("hi", {"nickname":nick,"ticket":p.handshake.ticket});
+						});
+					}
+					rooms.getRoom(d).removeHistory();
+				}
 
 				// ONLY rule break
 				io.of("/view").in(d).emit("public",{"public" : data.public});
@@ -201,20 +232,28 @@ io.of('/room').authorization(function (handshakeData, callback) {
 	}
 	socket.set("nickname", socket.handshake.nick);
 
-	// inRoomBroadcast(socket.handshake.join_room,"hi", {"nickname":socket.handshake.nick,"ticket":socket.handshake.ticket});
+	inRoomBroadcast(socket.handshake.join_room,"hi", {"nickname":socket.handshake.nick,"ticket":socket.handshake.ticket});
 
-	here = io.of("/room").in(socket.handshake.join_room).clients();
+	here = io.of("/room").clients(socket.handshake.join_room);
 	for(p in here){
 		p = here[p];
 		p.get("nickname", function(e, nick){
 			socket.emit("hi", {"nickname":nick,"ticket":p.handshake.ticket});
 		});
 	}
+
+	history = rooms.getRoom(socket.handshake.join_room).getHistory();
+	for(h in history){
+		h = history[h];
+		h['history'] = true;
+		socket.emit("msg", h);
+	}
 	
 	socket.on("msg", function(data){
 		socket.get("room", function(e, d){
 			socket.get("nickname", function(e, nick){
 				data['nickname'] = nick;
+				rooms.getRoom(d).pushHistory(data);
 				inRoomBroadcast(d, "msg", data);
 			});
 		});
@@ -228,10 +267,8 @@ io.of('/room').authorization(function (handshakeData, callback) {
 
 	socket.on('disconnect', function() {
 		socket.get("room", function(e, d){
-			socket.get("nickname", function(e, nick){
-				inRoomBroadcast(d, "goodbye", {"nickname":nick});
-				try{ rooms.removeTicket(d, socket.handshake.ticket); } catch(e){}
-			});
+			inRoomBroadcast(d, "goodbye", {"ticket":socket.handshake.ticket});
+			try{ rooms.removeTicket(d, socket.handshake.ticket); } catch(e){}
 		});
 	});
 });
