@@ -72,7 +72,7 @@ function getFiles(evt) {
 			globalnotice("You tried to upload too big files! Go do it somewhere else!");
 		}
 	}
-	$(".dragModal").hide("medium").data("m", "n");
+	$(".dragModal").fadeOut("medium").data("m", "n");
 	$("#upload").val("");
 	return false;
 }
