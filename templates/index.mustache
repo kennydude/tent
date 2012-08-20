@@ -1,5 +1,10 @@
 <h1>Welcome to the Tent</h1>
 <p>Have you got your ID badge ready?</p>
+{{#message}}
+<div class="alert-box alert">
+{{ message }}
+</div>
+{{/message}}
 <form method="get" action="/bouncer">
 	<div class="eight columns offset-by-two">
 		<div class="panel">

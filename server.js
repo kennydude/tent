@@ -40,7 +40,11 @@ function view(req, res, data, template){
 }
 
 app.get("/", function(req,res){
-	view(req, res, {"status":"ok"}, "index");
+	msg = undefined;
+	if(req.query.kicked != undefined){
+		msg = "You were kicked";
+	}
+	view(req, res, {"status":"ok","message":msg}, "index");
 });
 
 function maketicket(){ return Math.floor(Math.random()*1001) + ""; }
@@ -69,15 +73,17 @@ app.get("/bouncer", function(req,res){
 		res.redirect("/room/" + req.query.room + "?ticket=" + ticket.getName() + "&name=" + req.query.name);
 	} else{
 		if(req.query.sure != undefined){
-			ticket = rooms.getRoom(req.query.room).newTicket();
+			rooms.getRoom(req.query.room, function(room) {
+				ticket = room.newTicket();
 
-			io.of('/room').in("manager-" + req.query.room).emit("nock", {
-				"ticket":ticket.getName(),
-				"nickname":req.query.name,
-				"info":req.query.info
+				io.of('/room').in("manager-" + req.query.room).emit("nock", {
+					"ticket":ticket.getName(),
+					"nickname":req.query.name,
+					"info":req.query.info
+				});
+				
+				res.redirect("/outside/" + req.query.room + "?ticket=" + ticket.getName() + "&name=" + req.query.name);
 			});
-			
-			res.redirect("/outside/" + req.query.room + "?ticket=" + ticket.getName() + "&name=" + req.query.name);
 		} else{
 			view(req, res, {"status" : "exists", "room" : req.query.room, "name": req.query.name,"info":req.query.info}, "exists");
 		}
@@ -120,24 +126,28 @@ io.of("/view").authorization(function (handshakeData, callback) {
 }).on('connection', function (socket) {
 	socket.join(socket.handshake.room);
 
-	if(!rooms.roomExists(socket.handshake.room)){
-		socket.emit("public", {"public":false});
-	} else{
-		history = rooms.getRoom(socket.handshake.room).getHistory();
-		for(h in history){
-			h = history[h];
-			h['history'] = true;
-			socket.emit("msg", h);
+	socket.on("ready", function() {
+		if(!rooms.roomExists(socket.handshake.room)){
+			socket.emit("public", {"public":false});
+		} else{
+			rooms.getRoom(socket.handshake.room, function(room) {
+				history = room.getHistory();
+				for(h in history){
+					h = history[h];
+					h['history'] = true;
+					socket.emit("msg", h);
+				};
+			});
 		}
-	}
 
-	here = io.of("/room").clients(socket.handshake.room);
-	for(p in here){
-		p = here[p];
-		p.get("nickname", function(e, nick){
-			socket.emit("hi", {"nickname":nick,"ticket":p.handshake.ticket});
-		});
-	}
+		here = io.of("/room").clients(socket.handshake.room);
+		for(p in here){
+			p = here[p];
+			p.get("nickname", function(e, nick){
+				socket.emit("hi", {"nickname":nick,"ticket":p.handshake.ticket});
+			});
+		}
+	});
 });
 
 // Waiting to get in
@@ -153,9 +163,11 @@ io.of("/outside").authorization(function (handshakeData, callback) {
 });
 
 function inRoomBroadcast(room, event, data){
-	if(rooms.getRoom(room).isPublic()){
-		io.of("/view").in(room).emit(event, data);
-	}
+	rooms.getRoom(room, function(r){
+		if (r.isPublic()) {
+			io.of("/view").in(room).emit(event, data);
+		};
+	});
 	io.of("/room").in(room).emit(event, data);
 }
 
@@ -191,8 +203,10 @@ io.of('/room').authorization(function (handshakeData, callback) {
 
 		socket.on("allow", function(data){
 			socket.get("room", function(e, d){
-				rooms.getRoom(d).getTicket(data.ticket).stampEntry();
-				io.of("/outside").in("outside-" + data.ticket).emit("allow", {"room":d,"ticket":data.ticket});
+				rooms.getRoom(d, function(room) {
+					room.getTicket(data.ticket).stampEntry();
+					io.of("/outside").in("outside-" + data.ticket).emit("allow", {"room":d,"ticket":data.ticket});
+				});
 			});
 		});
 		socket.on("deny", function(data){
@@ -203,57 +217,67 @@ io.of('/room').authorization(function (handshakeData, callback) {
 
 		socket.on("kick", function(data){
 			socket.get("room", function(e, d){
-				rooms.getRoom(d).removeTicket(data.ticket);
-				inRoomBroadcast(d, "goodbye", {"ticket":data.ticket});
+				rooms.getRoom(d, function(room) {
+					room.removeTicket(data.ticket);
+					inRoomBroadcast(d, "goodbye", {"ticket":data.ticket});
+				});
 			});
 		});
 
 		socket.on("public", function(data) {
 			socket.get("room", function(e, d){
-				rooms.getRoom(d).makePublic(data.public);
+				rooms.getRoom(d,function(room) {
+					room.makePublic(data.public);
 
-				if(data.public){
-					here = io.of("/room").in(socket.handshake.join_room).clients();
-					io.of("/view").in(d).emit("clearusers", {});
-					for(p in here){
-						p = here[p];
-						p.get("nickname", function(e, nick){
-							io.of("/view").in(d).emit("hi", {"nickname":nick,"ticket":p.handshake.ticket});
-						});
+					if(data.public){
+						here = io.of("/room").in(socket.handshake.join_room).clients();
+						io.of("/view").in(d).emit("clearusers", {});
+						for(p in here){
+							p = here[p];
+							p.get("nickname", function(e, nick){
+								io.of("/view").in(d).emit("hi", {"nickname":nick,"ticket":p.handshake.ticket});
+							});
+						}
+						room.removeHistory();
 					}
-					rooms.getRoom(d).removeHistory();
-				}
 
-				// ONLY rule break
-				io.of("/view").in(d).emit("public",{"public" : data.public});
-				io.of("/room").in(d).emit("public",{"public" : data.public});
+					// ONLY rule break
+					io.of("/view").in(d).emit("public",{"public" : data.public});
+					io.of("/room").in(d).emit("public",{"public" : data.public});
+				});
 			});
 		});
 	}
 	socket.set("nickname", socket.handshake.nick);
 
-	inRoomBroadcast(socket.handshake.join_room,"hi", {"nickname":socket.handshake.nick,"ticket":socket.handshake.ticket});
+	socket.on("ready", function() {
+		inRoomBroadcast(socket.handshake.join_room,"hi", {"nickname":socket.handshake.nick,"ticket":socket.handshake.ticket});
 
-	here = io.of("/room").clients(socket.handshake.join_room);
-	for(p in here){
-		p = here[p];
-		p.get("nickname", function(e, nick){
-			socket.emit("hi", {"nickname":nick,"ticket":p.handshake.ticket});
+		here = io.of("/room").clients(socket.handshake.join_room);
+		for(p in here){
+			p = here[p];
+			p.get("nickname", function(e, nick){
+				socket.emit("hi", {"nickname":nick,"ticket":p.handshake.ticket});
+			});
+		}
+
+		history = rooms.getRoom(socket.handshake.join_room, function(room) {
+			history = room.getHistory();
+			for(h in history){
+				h = history[h];
+				h['history'] = true;
+				socket.emit("msg", h);
+			}
 		});
-	}
-
-	history = rooms.getRoom(socket.handshake.join_room).getHistory();
-	for(h in history){
-		h = history[h];
-		h['history'] = true;
-		socket.emit("msg", h);
-	}
+	});
 	
 	socket.on("msg", function(data){
 		socket.get("room", function(e, d){
 			socket.get("nickname", function(e, nick){
 				data['nickname'] = nick;
-				rooms.getRoom(d).pushHistory(data);
+				rooms.getRoom(d, function(room) {
+					room.pushHistory(data);
+				})
 				inRoomBroadcast(d, "msg", data);
 			});
 		});

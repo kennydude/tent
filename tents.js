@@ -45,8 +45,11 @@ Tents.prototype.newRoom = function(room) {
 	return r;
 };
 
-Tents.prototype.getRoom = function(room) {
-	return this.rooms[room];
+Tents.prototype.getRoom = function(room, callback) {
+	room = room.toLowerCase();
+	if(this.roomExists(room)){
+		callback(this.rooms[room]);
+	}
 };
 
 Tents.prototype.roomExists = function(room){

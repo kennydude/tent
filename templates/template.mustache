@@ -43,54 +43,43 @@
 		font-size: 12px;
 		padding-top: 4px;
 	}
+	.show{visibility:visible;}
+	#dragModal{
+		background: #333;
+		opacity: 0.6;
+		position: fixed;
+		top: 0;left: 0;right: 0;bottom: 0;
+	}
+	.nickname{padding-left: 5px;}
 	.hide{display:none;}
 	.topbar a{ color: #fff !important;}
-	.topbar{background: #555;color:#fff !important;font-size:75%; padding:5px;margin-bottom:5px;}
+	.globalnotice{ background: #F00; }
+	.topbar{background: #555;color:#fff !important;font-size:75%;margin-bottom:5px;}
+	.topbar div{padding:5px}
 	</style>
+	{{! This is a tiny bit of JS to basically bootstrap us up to load faster }}
+	<SCRIPT TYPE="text/javascript">
+var ltask = [];
+function blast(s){ for(i in s){ s[i](); } }
+function sockets(){ ltask.push(function() { include(["/assets/jquery.js", "/socket.io/socket.io.js"], function(){include("/assets/base.js");} ); }); }
+	</SCRIPT>
 </head>
-<body>
-	<script type="text/javascript" src="/assets/jquery.js"></script>
+<body onload="blast(ltask);">
 	<div class="container">
 		<div class="topbar">
-			<a title="Tent is a place to discuss things. It's open-source, too.">Tent</a> <small title="You are connected to the tent." class="hide show-on-connect label success">:D</small>
-			<small title="You are not connected to the tent." class="hide-on-connect label alert">:(</small>
+			<div>
+				<a title="Tent is a place to discuss things. It's open-source, too.">Tent</a> <small title="You are connected to the tent." class="hide show-on-connect label success">:D</small>
+				<small title="You are not connected to the tent." class="hide hide-on-connect label alert">:(</small>
+			</div>
+			<div class="hide globalnotice">
+			</div>
 		</div>
 		<div class="row">
 			{{& content }}
 		</div>
 	</div>
-<script src="/socket.io/socket.io.js"></script>
+<script src=""></script>
 <script>
-if(window.moreRoom == undefined){ moreRoom = ''; }
-url = 'http://' + document.location.host + moreRoom;
-console.log(url);
-var socket = io.connect(url);
-
-socket.on('connect', function () {
-	$(".hide-on-connect").hide();
-	$(".show-on-connect").show();
-});
-socket.on('disconnect', function () {
-	$(".hide-on-connect").show();
-	$(".show-on-connect").hide();
-});
-socket.on('connect_failed', function () {
-	$(".hide-on-connect").show();
-	$(".show-on-connect").hide();
-});
-socket.on('reconnect', function () {
-	$(".hide-on-connect").hide();
-	$(".show-on-connect").show();
-});
-
-socket.on("reject", function(){
-	$(".rejected").show();
-});
-
-socket.on('servermsg', function (data) {
-	if(data.event == "closedown"){
-		$("#closedown").show();
-	}
-});
+/* include.js 1.2 | github.com/CapMousse/include.js */(function(j){j.include=function(d,g){function o(){}function j(b,c,a){/\.css$/.test(b)?(a=f.createElement(p),a.href=b,a.rel="stylesheet",a.type="text/css",e.appendChild(a),c()):(k++,a=f.createElement(q),a.onload=function(){r(a,c)},a.onreadystatechange=function(){/loaded|complete/.test(this.readyState)&&r(a,c)},a.async=!0,a.src=b,e.insertBefore(a,e.firstChild))}function r(b,c){t(c);l[b.src.split("/").pop()]=1;b.onload=b.onreadystatechange=null}function t(b){function c(){!--k&&g()}b.length?b(c):(b(),c())}function s(b){var c,a;c=b.length;for(a=[];c--;a.unshift(b[c]));return a}var f=document,e=f.getElementsByTagName("head")[0],l={},k=0,h=[],q="script",p="link",m;!d.pop&&(d=[d]);g=g||o;(function c(a,i,e,n){if(!f.body)return setTimeout(c,1);h=[].concat(s(f.getElementsByTagName(q)),s(f.getElementsByTagName(p)));for(a=h.length;a--;)(m=h[a].src||h[a].href)&&(l[m.split("/").pop()]=m);for(a=d.length;a--;)n=o,e=!1,d[a].pop?(i=d[a][0],n=d[a][1],e=d[a][2]):i=d[a],l[i.split("/").pop()]||j(i,n,e);!k&&g()})()}})(this);
 </script>
 </body>

@@ -5,10 +5,10 @@
 <div class="hide rejected callout">Sorry, you were not accepted</div>
 <script type="text/javascript">
 moreRoom = "/outside";
-
-$(document).ready(function(){
+sockets();
+window.socketReady = function(){
 	socket.on("allow", function(data){
 		document.location.href = "/room/" + data.room + "?ticket=" + data.ticket + "&name={{ name }}";
-	});
-});
+	});	
+};
 </script>

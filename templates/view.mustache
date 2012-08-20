@@ -13,10 +13,12 @@
 		</div>
 	</div>
 </div>
-<script type="text/javascript" src="/assets/hogan.js"></script>
-<script type="text/javascript" src="/assets/md5.js"></script>
-<script type="text/javascript" src="/assets/basechat.js"></script>
 <script>
 moreRoom = "/view";
-$(".non-public").hide();
+
+sockets();
+var socketReady = function() {
+	$(".non-public").hide();
+	include(["/assets/hogan.js", "/assets/md5.js"], function() {include("/assets/basechat.js");});
+};
 </script>

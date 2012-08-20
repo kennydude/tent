@@ -3,10 +3,12 @@
 var chatTemplate = Hogan.compile('<div class="row chatRow">'+
 '		<div class="theRow ten columns">' + 
 '			<strong>{{ nickname }}:</strong> {{ message }}' +
+'			{{#image}}<img src="{{& image }}" />{{/image}}' +
+'			{{#file}}<a href="{{file}}" target="_blank">attached a file {{filename}}</a>{{/file}}' +
 '		</div>' +
 '	</div>');
 
-var userTemplate = Hogan.compile('<div class="row" id="user-{{ ticket }}">' +
+var userTemplate = Hogan.compile('<div class="row nickname">' +
 '		<div class="ten columns">' + 
 '			{{ nickname }}' +
 '		</div>' +
@@ -35,13 +37,17 @@ function addMsg(data){
 		d.addClass("old");
 	}
 	$(".theRow", d).css("border-left", "3px solid " + colorHash(data.nickname));
-	document.body.scrollTop = d.offset().top;
+	document.body.scrollTop = d.offset().top  +d.height();
 }
 
 function doUEvent(el, data){
 	$(".kick", el).click(function(){
-		socket.emit("kick", {"ticket":$(this).data("ticket")});
-	}).data("ticket", data.ticket);
+		$("#kickModal .kick").click(function() {
+			socket.emit("kick", {"ticket":$(this).data("ticket")});
+		}).data("ticket", $(this).data("ticket"));
+		$("#kickModal .user").text($(this).data("nick"));
+		$("#kickModal").reveal();
+	}).data("ticket", data.ticket).data("nick", data.nickname);
 
 	el.css("border-left", "3px solid " + colorHash(data.nickname));
 }
@@ -71,7 +77,7 @@ $(document).ready(function(){
 	});
 	socket.on("hi", function(data){
 		if($("#user-" + data.ticket).size() == 0){
-			doUEvent( $( userTemplate.render( data ) ).appendTo(".peopleHere"), data );
+			doUEvent( $("<div>").attr("id", "user-" + data.ticket).html( userTemplate.render( data ) ).appendTo(".peopleHere"), data );
 		}
 	});
 	socket.on("goodbye", function(data){
@@ -81,4 +87,5 @@ $(document).ready(function(){
 	socket.on("msg", function(data){
 		addMsg(data);
 	});
+	socket.emit("ready", {});
 });
