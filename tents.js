@@ -1,10 +1,38 @@
 // Tents
 // Tents are rooms
+var fs = require("fs");
+fs.exists(__dirname + "/reserved/", function(exists) {
+	if(!exists) fs.mkdir(__dirname + "/reserved/");
+});
 
 function Tents(io){
 	this.rooms = {};
 	this.io = io;
+	this.subscribed = {};
 }
+
+Tents.prototype.subscribeToFeed = function(label, room) {
+	if(this.subscribed[label] == undefined) this.subscribed[label] = [];
+	this.subscribed[label].push(room);
+	this.getRoom(room, function() {
+		r.broadcastMessage("newfeed", {"feed" : label});
+	});
+};
+
+Tents.prototype.pingMessage = function(label, data) {
+	if(this.subscribed[label] != undefined){
+		for(room in this.subscribed[label]){
+			room = this.subscribed[label][room];
+			this.getRoom(room, function(r) {
+				r.broadcastMessage("msg", {
+					"type" : "hook",
+					"label" : label,
+					"data" : data
+				});
+			});
+		}
+	}
+};
 
 /**
  * Are we allowed entry? True/False
@@ -35,13 +63,26 @@ Tents.prototype.notifyManager = function(ticket, room) {
 	this.io.of('/room').in("ticket-" + room + "-" + ticket).emit("manager",{});
 };
 
+function getReservedDeta(room, callback){
+	fs.readFile(__dirname + "/reserved/" + room + ".txt", function(err, data) {
+		if(err){ callback(null); }
+		else{ callback(JSON.parse(data)); }
+	});
+}
+
+Tents.prototype.getReservedRoom = function(room, callback) {
+	this.getRoom(room, callback);
+};
+
 /**
  * Creates a new room
  */
-Tents.prototype.newRoom = function(room) {
-	r = new Room(this, room);
-	this.rooms[room] = r;
-	console.log("HI");
+Tents.prototype.newRoom = function(room, callback) {
+	var self = this;
+	r = new Room(this, room, function(r) {
+		self.rooms[room] = r;
+		callback(r);
+	});
 	return r;
 };
 
@@ -49,7 +90,20 @@ Tents.prototype.getRoom = function(room, callback) {
 	room = room.toLowerCase();
 	if(this.roomExists(room)){
 		callback(this.rooms[room]);
+	} else{
+		var self = this;
+		r = new Room(this, room, function(t) {
+			self.rooms[room] = t;
+			callback(self.rooms[room]);
+		});
 	}
+};
+
+Tents.prototype.emptyRoom = function(room, callback) {
+	this.getRoom(room, function(r) {
+		if(r.tickets.length <= 0){callback(true, r);}
+		else{callback(false, r);}
+	});
 };
 
 Tents.prototype.roomExists = function(room){
@@ -65,12 +119,36 @@ Tents.prototype.notifyRemoval = function(r, t) {
 	this.io.of("/room").in("ticket-" + r + "-" + t).emit("kick",{});
 };
 
-function Room(tent, room_name){
+function trimarray(a){
+	r = [];
+	for(k in a){
+		r[k] = a[k].trim();
+	}
+	return r;
+}
+
+function Room(tent, room_name, setupcallback){
 	this.tent = tent;
 	this.room_name = room_name;
 	this.tickets = [];
 	this.public = false;
 	this.history = [];
+	this.allow_new_tickets = true;
+
+	var self = this;
+	getReservedDeta(room_name, function(rdata){
+		if(rdata != null){
+			self.reserved = true;
+			self.reserved = true;
+			self.forever_reserved = rdata['forever'];
+			self.reserved_for = trimarray(rdata['for'].split(","));
+			self.reserved_date = rdata['date'];
+		} else{
+			this.reserved = false;
+		}
+		if(setupcallback != undefined)
+			setupcallback(self);
+	});
 }
 
 Room.prototype.pushHistory = function(h) {
@@ -136,10 +214,43 @@ Room.prototype.notifyManager = function(ticket) {
 	this.tent.notifyManager(ticket, this.room_name);
 };
 
+Room.prototype.saveReserved = function() {
+	if(this.reserved_for == undefined) this.reserved_for = [];
+	fs.writeFile(__dirname + "/reserved/" + this.room_name + ".txt", JSON.stringify({
+		"forever" : this.forever_reserved,
+		"for" : this.reserved_for.join(","),
+		"date" : this.reserved_date
+	}));
+};
+
+Room.prototype.broadcastMessage = function(event, data) {
+	if (this.isPublic()) {
+		this.tent.io.of("/view").in(this.room_name).emit(event, data);
+	}
+	this.tent.io.of("/room").in(this.room_name).emit(event, data);
+};
+
+function getRDate(){
+	now = new Date();
+	return now.getDay() + "/" + now.getMonth() + "/" + now.getFullYear();
+}
+
 /**
  * Create new ticket!
  */
-Room.prototype.newTicket = function() {
+Room.prototype.newTicket = function(user) {
+	if(user == undefined && this.reserved == true){
+		return null;
+	} else if(this.reserved == true){
+		if(this.forever_reserved || this.reserved_date == getRDate()){
+			if(this.reserved_for.indexOf(user.name) == -1 && user.is_admin != true){
+				return null;
+			}
+		}
+	} else if(this.allow_new_tickets == false){
+		if(user != undefined){ if(user.is_admin != true){ return null; } }
+		else{ return null; }
+	}
 	t = new Ticket( this.tickets.length + "", this);
 	this.tickets[ this.tickets.length + "" ] = t;
 	return t;

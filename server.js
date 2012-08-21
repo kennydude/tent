@@ -1,22 +1,87 @@
 // Tent
 appPort = process.env['app_port'] || 3000
+appHost = (process.env['HOST'] || "localhost:3000");
+// You should change this otherwise only me (Joe) can admin your tent!
+admins = (process.env['tent_admins'] || "twitter:21428122").split(",");
 
 var express = require('express');
 var app = express();
 
+// Auth
+var passport = require('passport'),
+	SessionStore = require("./connectfilestore.js"),
+	TwitterStrategy = require('passport-twitter').Strategy;
+passport.serializeUser(function(user, done) {
+	done(null, user);
+});
+
+passport.deserializeUser(function(obj, done) {
+	done(null, obj);
+});
+passport.use(new TwitterStrategy({
+		consumerKey: "EquK2nDArHHTf3M5QpVAtQ",
+		consumerSecret: "yKfvZY3kGzWcoAENtSvBeWZHHqm04QeeNojlHmudzuQ",
+		callbackURL: "http://"+appHost+"/auth/twitter"
+	},
+	function(token, tokenSecret, profile, done) {
+		return done(null,{ "id" : "twitter:" + profile.id, "name" : "@" + profile.username });
+	}
+));
+app.configure(function() {
+	app.use(express.bodyParser());
+	app.use(express.json());
+	app.use(express.cookieParser('shhhh, very secret'));
+	var cookiemiddle = [];
+
+	// We do this to save resources + get around EU cookie law
+	app.use(function(req, res, next) {
+		if(req.signedCookies['connect.sid'] != undefined || req.path.indexOf("/auth/") == 0){
+			function gnex(i){
+				if(cookiemiddle[i] != undefined){
+					cookiemiddle[i](req, res, function(){ gnex(i+1); });
+				} else{
+					next();
+				}
+			}
+			gnex(0);
+		} else{
+			next();
+		}
+	});
+	cookiemiddle.push(express.session({store:new SessionStore(({"folder":__dirname+"/sessions"})) }));
+	cookiemiddle.push(passport.initialize());
+	cookiemiddle.push(passport.session());
+	cookiemiddle.push(function(req, res, next) {
+		if(req.user != undefined){
+			if(admins.indexOf(req.user.id) != -1){
+				req.user.is_admin = true;
+			}
+			req.query.name = req.user.name;
+		}
+		next();
+	});
+
+	app.use(app.router);
+});
+
+app.get('/auth/twitter', passport.authenticate('twitter', { failureRedirect: '/login?failure' }), function(req,res) {
+	res.redirect('/?hi');
+});
+
+// Sockets
+var http = require('http');
+server = http.createServer(app).listen(appPort);
+var io = require('socket.io').listen(server);
+
+// Tents
+var tents = require("./tents");
+var rooms = new tents.Tents(io);
+
+// Templates
 var hogan = require("hogan.js");
 var templates = {};
 var fs = require("fs");
 var url = require("url");
-
-var http = require('http');
-
-server = http.createServer(app).listen(appPort);
-var io = require('socket.io').listen(server);
-
-var tents = require("./tents");
-var rooms = new tents.Tents(io);
-
 fs.readdir(__dirname + "/templates", function(e, files){
 	for(file in files){
 		fname = __dirname +"/templates/"+ files[file];
@@ -26,7 +91,6 @@ fs.readdir(__dirname + "/templates", function(e, files){
 		templates[file] = hogan.compile(data+"");
 	}
 });
-
 console.log("Templates Caching");
 
 function view(req, res, data, template){
@@ -35,16 +99,47 @@ function view(req, res, data, template){
 	} else{
 		data = {"content" : templates[template].render(data)};
 		data['port'] = appPort;
+		if(req.user != undefined){
+			data['userid'] = req.user.id;
+			data['username'] = req.user.name;
+			data['is_admin'] = req.user.is_admin;
+		}
 		res.end(templates["template"].render(data));
 	}
 }
 
+require("./admin.js")(app, view, rooms);
+require("./hooks.js")(app, rooms);
+
 app.get("/", function(req,res){
 	msg = undefined;
+	msgClass = "alert"
 	if(req.query.kicked != undefined){
 		msg = "You were kicked";
+	} else if(req.query.notickets != undefined){
+		msg = "Sorry, we couldn't give you a ticket to that room";
+	} else if(req.query.bye != undefined){
+		msg = "You were logged out";
+		msgClass = "success;"
+	} else if(req.query.hi != undefined && req.user != undefined){
+		msg = "Hi there " + req.user.name;
+		msgClass = "success";
 	}
-	view(req, res, {"status":"ok","message":msg}, "index");
+	data = {"status":"ok","message":msg, "message_type" : msgClass};
+	if(req.user){
+		data['userid'] = req.user.id;
+		data['username'] = req.user.name;
+	}
+	view(req, res, data, "index");
+});
+
+app.get("/login", function(req, res) {
+	view(req, res, {}, "login");
+});
+app.get("/logout", function(req, res) {
+	 req.session.destroy(function(err){
+	 	res.redirect("/?bye");
+	 });
 });
 
 function maketicket(){ return Math.floor(Math.random()*1001) + ""; }
@@ -65,29 +160,44 @@ app.get("/room/:id", function(req,res){
 });
 
 app.get("/bouncer", function(req,res){
-	if(!rooms.roomExists(req.query.room)){
-		// new room
-		ticket = rooms.newRoom(req.query.room).newTicket().stampEntry();
-		ticket.makeManager();
+	rooms.emptyRoom(req.query.room, function(empty, room){
+		if(empty){
+			// new room
+			rooms.newRoom(req.query.room, function(room) {
+				ticket = room.newTicket(req.user);
+				if(ticket == null || ticket == undefined){ res.redirect("/?notickets"); return; }
+				ticket.stampEntry();
+				ticket.makeManager();
 
-		res.redirect("/room/" + req.query.room + "?ticket=" + ticket.getName() + "&name=" + req.query.name);
-	} else{
-		if(req.query.sure != undefined){
-			rooms.getRoom(req.query.room, function(room) {
-				ticket = room.newTicket();
-
-				io.of('/room').in("manager-" + req.query.room).emit("nock", {
-					"ticket":ticket.getName(),
-					"nickname":req.query.name,
-					"info":req.query.info
-				});
-				
-				res.redirect("/outside/" + req.query.room + "?ticket=" + ticket.getName() + "&name=" + req.query.name);
+				res.redirect("/room/" + req.query.room + "?ticket=" + ticket.getName() + "&name=" + req.query.name);
 			});
 		} else{
-			view(req, res, {"status" : "exists", "room" : req.query.room, "name": req.query.name,"info":req.query.info}, "exists");
+			if(req.query.sure != undefined){
+				rooms.getRoom(req.query.room, function(room) {
+					ticket = room.newTicket(req.user);
+					if(ticket == null || ticket == undefined){ res.redirect("/?notickets"); return; }
+					if(req.user != undefined){if( req.user.is_admin == true){
+						// Admin is required entry
+						ticket.stampEntry();
+						ticket.makeManager();
+
+						res.redirect("/room/" + req.query.room + "?ticket=" + ticket.getName() + "&name=" + req.query.name);
+					}} else{
+
+						io.of('/room').in("manager-" + req.query.room).emit("nock", {
+							"ticket":ticket.getName(),
+							"nickname":req.query.name,
+							"info":req.query.info
+						});
+						
+						res.redirect("/outside/" + req.query.room + "?ticket=" + ticket.getName() + "&name=" + req.query.name);
+					}
+				});
+			} else{
+				view(req, res, {"status" : "exists", "room" : req.query.room, "name": req.query.name,"info":req.query.info}, "exists");
+			}
 		}
-	}
+	});
 });
 
 app.get("/outside/:room", function(req,res){
@@ -162,15 +272,6 @@ io.of("/outside").authorization(function (handshakeData, callback) {
 	socket.join("outside-" + socket.handshake.my_ticket);
 });
 
-function inRoomBroadcast(room, event, data){
-	rooms.getRoom(room, function(r){
-		if (r.isPublic()) {
-			io.of("/view").in(room).emit(event, data);
-		};
-	});
-	io.of("/room").in(room).emit(event, data);
-}
-
 
 io.of('/room').authorization(function (handshakeData, callback) {
 	try{
@@ -197,62 +298,74 @@ io.of('/room').authorization(function (handshakeData, callback) {
 		socket.disconnect();
 	});
 
-	if(socket.handshake.is_boss){
-		socket.join("manager-" + socket.handshake.join_room);
-		socket.emit("manager",{});
-
-		socket.on("allow", function(data){
-			socket.get("room", function(e, d){
-				rooms.getRoom(d, function(room) {
-					room.getTicket(data.ticket).stampEntry();
-					io.of("/outside").in("outside-" + data.ticket).emit("allow", {"room":d,"ticket":data.ticket});
-				});
-			});
-		});
-		socket.on("deny", function(data){
-			socket.get("room", function(e, d){
-				io.of("/outside").in("outside-" + data.ticket).emit("reject", {"room":d,"ticket":data.ticket});
-			});
-		});
-
-		socket.on("kick", function(data){
-			socket.get("room", function(e, d){
-				rooms.getRoom(d, function(room) {
-					room.removeTicket(data.ticket);
-					inRoomBroadcast(d, "goodbye", {"ticket":data.ticket});
-				});
-			});
-		});
-
-		socket.on("public", function(data) {
-			socket.get("room", function(e, d){
-				rooms.getRoom(d,function(room) {
-					room.makePublic(data.public);
-
-					if(data.public){
-						here = io.of("/room").in(socket.handshake.join_room).clients();
-						io.of("/view").in(d).emit("clearusers", {});
-						for(p in here){
-							p = here[p];
-							p.get("nickname", function(e, nick){
-								io.of("/view").in(d).emit("hi", {"nickname":nick,"ticket":p.handshake.ticket});
-							});
-						}
-						room.removeHistory();
-					}
-
-					// ONLY rule break
-					io.of("/view").in(d).emit("public",{"public" : data.public});
-					io.of("/room").in(d).emit("public",{"public" : data.public});
-				});
-			});
-		});
-	}
 	socket.set("nickname", socket.handshake.nick);
 
 	socket.on("ready", function() {
-		inRoomBroadcast(socket.handshake.join_room,"hi", {"nickname":socket.handshake.nick,"ticket":socket.handshake.ticket});
+		if(socket.handshake.is_boss){
+			socket.join("manager-" + socket.handshake.join_room);
+			socket.emit("manager",{});
 
+			socket.on("sub_feed", function(data) {
+				socket.get("room", function(e, d){
+					rooms.subscribeToFeed(data.feed, d);
+				});
+			});
+
+			socket.on("allow", function(data){
+				socket.get("room", function(e, d){
+					rooms.getRoom(d, function(room) {
+						room.getTicket(data.ticket).stampEntry();
+						io.of("/outside").in("outside-" + data.ticket).emit("allow", {"room":d,"ticket":data.ticket});
+					});
+				});
+			});
+			socket.on("deny", function(data){
+				socket.get("room", function(e, d){
+					io.of("/outside").in("outside-" + data.ticket).emit("reject", {"room":d,"ticket":data.ticket});
+				});
+			});
+
+			socket.on("kick", function(data){
+				socket.get("room", function(e, d){
+					rooms.getRoom(d, function(room) {
+						room.removeTicket(data.ticket);
+						room.broadcastMessage("goodbye", {"ticket":data.ticket});
+					});
+				});
+			});
+
+			socket.on("lock", function(data) {
+				socket.get("room", function(e, d){
+					rooms.getRoom(d,function(room) {
+						room.allow_new_tickets = !data.lock;
+					});
+				});
+			});
+
+			socket.on("public", function(data) {
+				socket.get("room", function(e, d){
+					rooms.getRoom(d,function(room) {
+						room.makePublic(data.public);
+
+						if(data.public){
+							here = io.of("/room").in(socket.handshake.join_room).clients();
+							io.of("/view").in(d).emit("clearusers", {});
+							for(p in here){
+								p = here[p];
+								p.get("nickname", function(e, nick){
+									io.of("/view").in(d).emit("hi", {"nickname":nick,"ticket":p.handshake.ticket});
+								});
+							}
+							room.removeHistory();
+						}
+
+						// ONLY rule break
+						io.of("/view").in(d).emit("public",{"public" : data.public});
+						io.of("/room").in(d).emit("public",{"public" : data.public});
+					});
+				});
+			});
+		}
 		here = io.of("/room").clients(socket.handshake.join_room);
 		for(p in here){
 			p = here[p];
@@ -261,7 +374,8 @@ io.of('/room').authorization(function (handshakeData, callback) {
 			});
 		}
 
-		history = rooms.getRoom(socket.handshake.join_room, function(room) {
+		rooms.getRoom(socket.handshake.join_room, function(room) {
+			room.broadcastMessage("hi", {"nickname":socket.handshake.nick,"ticket":socket.handshake.ticket})
 			history = room.getHistory();
 			for(h in history){
 				h = history[h];
@@ -277,22 +391,29 @@ io.of('/room').authorization(function (handshakeData, callback) {
 				data['nickname'] = nick;
 				rooms.getRoom(d, function(room) {
 					room.pushHistory(data);
-				})
-				inRoomBroadcast(d, "msg", data);
+					room.broadcastMessage("msg", data);
+				});
 			});
 		});
 	});
 	socket.on("nick", function(data){
 		socket.get("room", function(e, d){
 			socket.set("nickname", data.new);
-			inRoomBroadcast(d, "rename", {"ticket": socket.handshake.ticket, "nickname":data.new});
+			rooms.getRoom(d, function(room) {
+				room.broadcastMessage("rename", {"ticket": socket.handshake.ticket, "nickname":data.new});
+			});
 		});
 	});
 
 	socket.on('disconnect', function() {
+		var ticket = socket.handshake.ticket;
 		socket.get("room", function(e, d){
-			inRoomBroadcast(d, "goodbye", {"ticket":socket.handshake.ticket});
-			try{ rooms.removeTicket(d, socket.handshake.ticket); } catch(e){}
+			process.nextTick(function() {
+				rooms.getRoom(d, function(room) {
+					room.broadcastMessage( "goodbye", {"ticket":ticket});
+					try{ rooms.removeTicket(d,ticket); } catch(e){console.log(e);}
+				});
+			});
 		});
 	});
 });

@@ -2,7 +2,9 @@
 
 var chatTemplate = Hogan.compile('<div class="row chatRow">'+
 '		<div class="theRow ten columns">' + 
-'			<strong>{{ nickname }}:</strong> {{ message }}' +
+'			{{#label}}<strong>{{ label }}</strong>: {{/label}}'+
+'			{{#nickname}}<strong>{{ nickname }}:</strong>{{/nickname}} {{ message }}{{ html }}' +
+'			{{^html}}{{ text }}{{/html}}' +
 '			{{#image}}<img src="{{& image }}" />{{/image}}' +
 '			{{#file}}<a href="{{file}}" target="_blank">attached a file {{filename}}</a>{{/file}}' +
 '		</div>' +
@@ -14,6 +16,8 @@ var userTemplate = Hogan.compile('<div class="row nickname">' +
 '		</div>' +
 '		<div class="manager hide">' +
 '			<a class="kick" href="#">kick</a>' +
+'			<a class="demote hide" href="#">demote</a>' +
+'			<a class="promote hide" title="make a manager" href="#">promote</a>' +
 '		</div>' +
 '	</div>');
 
@@ -47,6 +51,13 @@ function doUEvent(el, data){
 		}).data("ticket", $(this).data("ticket"));
 		$("#kickModal .user").text($(this).data("nick"));
 		$("#kickModal").reveal();
+	}).data("ticket", data.ticket).data("nick", data.nickname);
+	$(".promote", el).click(function(){
+		socket.emit("promote", {"ticket":$(this).data("ticket")});
+	}).data("ticket", data.ticket).data("nick", data.nickname);
+	
+	$(".demote", el).click(function(){
+		socket.emit("demote", {"ticket":$(this).data("ticket")});
 	}).data("ticket", data.ticket).data("nick", data.nickname);
 
 	el.css("border-left", "3px solid " + colorHash(data.nickname));

@@ -6,38 +6,60 @@
 		
 	</div>
 	<div class="three columns">
-		<div class="hide manager panel">
-			<label for="public_room">
-				<input type="checkbox" id="public_room" />
-				Public Room
-			</label>
-		</div>
-		<div class="me panel">
-			<div class="row collapse">
-				<div class="three mobile-one columns">
-					<span class="prefix">nick:</span>
+		<ul class="accordion">
+			<li class="hide manager">
+				<div class="title"><h5>Manager's controls!</h5></div>
+				<div class="content">
+					<label for="public_room">
+						<input type="checkbox" id="public_room" />
+						Public Room <abbr title="Makes this room viewable for the public on /view/{{ room }}">?</abbr>
+					</label>
+					<label for="lock_room">
+						<input type="checkbox" id="lock_room" />
+						Lock Room <abbr title="Prevents new people joining">?</abbr>
+					</label>
+					<h6>Feeds <abbr title="you can subscribe to feeds that are pushed to this tent">?</abbr></h6>
+					<input type="text" id="sub_feed" placeholder="e.g: github:kennydude/tent" />
+					<ul id="feeds">
+					</ul>
 				</div>
-				<div class="nine mobile-three columns">
-					<input type="text" id="nickname" value="{{ name }}" class="nickname" />
+			</li>
+			<li class="me">
+				<div class="title">You</div>
+				<div class="content">
+					<div class="row collapse">
+						<div class="three mobile-one columns">
+							<span class="prefix">nick:</span>
+						</div>
+						<div class="nine mobile-three columns">
+							<input type="text" id="nickname" value="{{ name }}" class="nickname" />
+						</div>
+					</div>
+					<div class="fileupload hide">
+						<h5 title="or drag onto the page (notice: images are thumbnailed. share elsewhere for larger). also don't upload giant files">upload</h6>
+						<input type="file" id="upload" />
+					</div>
 				</div>
-			</div>
-			<div class="fileupload hide">
-				<h5 title="or drag onto the page (notice: images are thumbnailed. share elsewhere for larger). also don't upload giant files">upload</h6>
-				<input type="file" id="upload" />
-			</div>
-		</div>
-		<div class="requests">
-			
-		</div>
-		<h5 class="show-on-mobile">Who's here</h5>
-		<div class="peopleHere">
-		</div>
+			</li>
+			<li class="manager">
+				<div class="title">Requests <span class="label round alert requestNumber"></span></div>
+				<div class="content">
+					<div class="requests"></div>
+					<div class="noRequests">There is nobody wanting to join</div>
+				</div>
+			</li>
+			<li class="active">
+				<div class="title"><h5 class="show-on-mobile">Who's here</h5></div>
+				<div class="peopleHere content">
+				</div>
+			</li>
+		</ul>
 	</div>
 </div>
 {{=<% %>=}}
 <!-- Templates -->
 <div class="reqTemplate hide">
-	<div class="panel">
+	<div class="request">
 		{{ nickname }} wants to talk
 		{{#info}}<br/>
 			<small>{{ info }}</small><br/>
@@ -70,10 +92,22 @@ moreRoom = "/room";
 var myNickName = "{{ name }}";
 var myTicket = "{{ ticket }}";
 
+function updateR(){
+	if($(".requests .request").size() == 0){
+		$(".requestNumber").hide(); $(".noRequests").show();
+	} else{
+		$(".requestNumber").show().text($(".requests .request").size());
+		$(".noRequests").hide();
+	}
+}
+
 sockets();
 var socketReady = function() {
 	include(["/assets/jquerypp.js", "/assets/hogan.js", "/assets/md5.js", "/assets/jquery.foundation.reveal.js"], function() {
 
+		include("/assets/jquery.foundation.accordion.js", function() {
+			$(document).foundationAccordion();
+		});
 		include("/assets/basechat.js");
 		$("#kickModal .close").click(function() {
 			$("#kickModal").trigger("reveal:close");
@@ -93,6 +127,13 @@ var socketReady = function() {
 				$("#composer").val("");
 			}
 		});
+		$("#sub_feed").on("keydown", function(e){
+			if(e.keyName() == "\r"){
+				data = {"feed":$("#sub_feed").val()};
+				socket.emit("sub_feed", data);
+				$("#sub_feed").val("");
+			}
+		});
 		$("#public_room").on("change",function() {
 			socket.emit("public", {"public" : $("#public_room").attr("checked") != undefined});
 			if( $("#public_room").attr("checked") != undefined ){
@@ -101,12 +142,21 @@ var socketReady = function() {
 				$(".public").hide();
 			}
 		});
+		$("#lock_room").on("change",function() {
+			socket.emit("lock", {"lock" : $("#lock_room").attr("checked") != undefined});
+		});
 
 		socket.on("manager", function(){
 			$("<style>").html(".manager{display:block !important;}").appendTo("head");
 		});
 		socket.on("kick", function(){
 			document.location.href = "/?kicked";
+		});
+		socket.on("newfeed", function(data) {
+			f = $("<li>").text(data.feed).appendTo($("#feeds"));
+			$("<a>").text("rm").appendTo(f).click(function() {
+				socket.emit("rmfeed", {"feed" : data.feed})
+			}).data("feed", data.feed);
 		});
 
 		socket.on("nock", function(data){
@@ -115,12 +165,16 @@ var socketReady = function() {
 			$(".allow", d).click(function(){
 				socket.emit("allow", {"ticket":$(this).data("ticket")});
 				$(this).parent().remove();
+				updateR();
 			}).data("ticket", data.ticket);
 
 			$(".deny", d).text("no").click(function(){
 				socket.emit("deny", {"ticket":$(this).data("ticket")});
 				$(this).parent().remove();
+				updateR();
 			}).data("ticket", data.ticket);
+
+			updateR();
 		});
 
 		if (window.File && window.FileReader && window.FileList && window.Blob && window.Image) {

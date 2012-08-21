@@ -5,6 +5,8 @@
     "node": "0.6.17",
     "dependencies": {
         "socket.io" : ">=0.9",
+	"passport" : ">=0.1.12",
+	"passport-twitter" : ">=0.1.4",
         "express": ">=3.0.0beta6",
 	"hogan.js" : ">=2.0"
     }

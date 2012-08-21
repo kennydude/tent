@@ -47,8 +47,6 @@ function imagetocanvas( img, thumbwidth, thumbheight, crop, background ) {
 }
 
 function getFiles(evt) {
-	evt = evt.originalEvent;
-
 	evt.stopPropagation();
 	evt.preventDefault();
 
@@ -79,19 +77,21 @@ function getFiles(evt) {
 
 $(".fileupload").show();
 $("#upload").on("change", getFiles);
-$("body").on("dragover", function(evt){
-	evt = evt.originalEvent;
+document.body.addEventListener("dragover", function(evt){
 	evt.stopPropagation();
 	evt.preventDefault();
 	evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
 	return false;
-}).on("dragleave", function(){
+});
+document.body.addEventListener("dragleave", function(){
 	console.log("leaving?");
 	var tout = setTimeout(function(){
 		$(".dragModal").fadeOut("medium");
 	}, 500);
 	return false;
-}).on("drop", getFiles).on("dragenter", function(){
+});
+document.body.addEventListener("drop", getFiles);
+document.body.addEventListener("dragenter", function(){
 	if($(".dragModal").data("m") != "y"){
 		if(window.tout != undefined){ clearTimeout(tout); }
 		$(".dragModal").fadeIn("medium").data("m", "y");

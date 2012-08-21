@@ -1,14 +1,19 @@
 <h1>Welcome to the Tent</h1>
 <p>Have you got your ID badge ready?</p>
 {{#message}}
-<div class="alert-box alert">
+<div class="alert-box {{message_type}}">
 {{ message }}
 </div>
 {{/message}}
 <form method="get" action="/bouncer">
 	<div class="eight columns offset-by-two">
 		<div class="panel">
+			{{#userid}}
+			We'll log you in as {{username}} (<a href="/logout">not you?</a>)
+			<br/><br/>
+			{{/userid}}{{^userid}}
 			<input type="text" name="name" placeholder="what is your name?" />
+			{{/userid}}
 			<input type="text" name="room" placeholder="where are you trying to get in?" />
 			<textarea name="info" placeholder="any extra information, perhaps a password?"></textarea>
 			<button class="small success button">Let me in »</button>

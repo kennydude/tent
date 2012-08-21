@@ -16,7 +16,7 @@
 		font-family:helvetica;
 		font-color:#1ec6e4;
 		text-transform:uppercase;
-		text-decoration:underline;
+		font-weight: lighter;
 	}
 	
 	p {
@@ -68,8 +68,18 @@ function sockets(){ ltask.push(function() { include(["/assets/jquery.js", "/sock
 	<div class="container">
 		<div class="topbar">
 			<div>
-				<a title="Tent is a place to discuss things. It's open-source, too.">Tent</a> <small title="You are connected to the tent." class="hide show-on-connect label success">:D</small>
+				<a href="/" title="Tent is a place to discuss things. It's open-source, too.">Tent</a> <small title="You are connected to the tent." class="hide show-on-connect label success">:D</small>
 				<small title="You are not connected to the tent." class="hide hide-on-connect label alert">:(</small>
+				{{#userid}}
+				<small class="label">you are logged in as {{username}}.</small>
+				<small class="label"><a href="/logout">logout</a></small>
+				{{#is_admin}}
+				<small class="label"><a href="/admin">admin</a></small>
+				{{/is_admin}}
+				{{/userid}}
+				{{^userid}}
+				<small class="label"><a href="/login">login</a></small>
+				{{/userid}}
 			</div>
 			<div class="hide globalnotice">
 			</div>

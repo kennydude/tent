@@ -1,0 +1,26 @@
+<h1>Admin</h1>
+<p>This is the administration interface for Tent</p>
+<div class="panel">
+	<h3>Global Controls</h3>
+	<form action="/admin" method="post">
+		<label for="no_new_rooms">
+			<input type="checkbox" id="no_new_rooms" name="no_new_rooms" {{#no_new_rooms}}checked="checked"{{/no_new_rooms}} />
+			No new rooms. This is useful if this is a private server
+		</label>
+	</form>
+</div>
+<div class="panel">
+	<h3>Reserved Rooms</h3>
+	<h4 class="subheader">These are great if you need to keep a room for something important like V.I.P guests</h4>
+	{{#unreserved}}
+	<div class="alert-box success">The room you asked to be unreserved has now been unreserved. Anyone can now enter the room</div>
+	{{/unreserved}}
+	<ul>
+		{{^reserved}}
+		<li>there are no reserved rooms</li>
+		{{/reserved}}{{#reserved}}
+		<li><a href="/admin/reserved/{{ name }}">{{ name }}</a></li>
+		{{/reserved}}
+	</ul>
+	<a class="button small success" href="/admin/reserved/new/">Reserve a room</a>
+</div>

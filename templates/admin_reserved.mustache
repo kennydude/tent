@@ -1,0 +1,25 @@
+<h1>Reserve Room</h1>
+{{#updated}}
+<div class="alert-box success">Updated!</div>
+{{/updated}}
+{{#room.room_name}}
+<a href="/admin/unreserve/{{ room.room_name }}" class="button alert small">Delete Reservation</a>
+<br/><br/>
+{{/room.room_name}}
+<form method="post" action="/admin/reserved/{{#room.room_name}}{{ room.room_name }}{{/room.room_name}}{{^room.room_name}}new{{/room.room_name}}">
+	<label for="room_name">Room Name:</label>
+	<input type="text" name="room_name" id="room_name" value="{{ room.room_name }}" />
+
+	<label for="date">Reserved Date (dd/mm/yyyy):</label>
+	<input type="date" name="date" id="date" value="{{ room.reserved_date }}" />
+
+	<label for="forever"><input type="checkbox" name="forever" id="forever" {{#room.forever_reserved}}checked="checked"{{/room.forever_reserved}} />This room is reserved forever (until you remove the reservation and this overrides the date)</label>
+
+	<br/><br/>
+
+	<label for="for">Who is it reserved for?</label>
+	<input type="text" name="for" id="for" value="{{ room.reserved_for }}" />
+	<p>Format: twitter:username, otherservice:identifier</p>
+
+	<button type="submit" class="button">Save</button>
+</form>
