@@ -2,25 +2,25 @@ I've used lots of little things to make Tent work wonderfully
 
 # Bundled Open-Source Libraries
 
-* [http://jquery.com](jQuery)
-* [http://jquerypp.com](jQuery++)
-* [http://foundation.zurb.com](Foundation CSS)
-* [http://twitter.github.com/hogan.js](Hogan.JS)
-* [http://pajhome.org.uk/crypt/md5](MD5)
-* [https://github.com/isaacs/github-flavored-markdown](GitHub Flavoured Markdown for JS)
+* [jQuery](http://jquery.com)
+* [jQuery++](http://jquerypp.com)
+* [Foundation CSS](http://foundation.zurb.com)
+* [Hogan.JS](http://twitter.github.com/hogan.js)
+* [MD5](http://pajhome.org.uk/crypt/md5)
+* [GitHub Flavoured Markdown for JS](https://github.com/isaacs/github-flavored-markdown)
 
 # Node Libraries
 
-* [http://passportjs.org](Passport) (and passport-twitter)
-* [http://expressjs.com](Express.js)
-* [https://npmjs.org/package/mime](MIME)
-* [marijnhaverbeke.nl//uglifyjs](Uglify-JS)
-* [http://socket.io](Socket.IO)
+* [Passport) (and passport-twitter](http://passportjs.org)
+* [Express.js](http://expressjs.com)
+* [MIME](https://npmjs.org/package/mime)
+* [Uglify-JS](http://marijnhaverbeke.nl//uglifyjs)
+* [Socket.IO](http://socket.io)
 
 # Other Usages
 
-* [http://glyphicons.com](Glyphicons) I have a PRO license, so I'm free to use them :)
+* [Glyphicons I have a PRO license, so I'm free to use them :](http://glyphicons.com)
 
 # Ideas from
 
-* [http://mattt.github.com/Chroma-Hash/](Chroma-Hash) - Used for the left-colour of usernames
+* [Chroma-Hash](http://mattt.github.com/Chroma-Hash/) - Used for the left-colour of usernames
