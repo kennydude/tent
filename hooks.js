@@ -5,7 +5,15 @@
 // The json can just have 'html' to render
 // and 'markdown'
 
-module.exports = function (app, rooms) {
+module.exports = function (app, rooms, view) {
+	app.get("/hooks/docs", function(req, res) {
+		var fs = require("fs");
+		fs.readFile(__dirname + "/docs/hooks.markdown", function(err, data) {
+			d = require("./assets/js/showdown.js").parse(data.toString());
+			view(req, res, { "content" : d }, "docs");
+		});
+	});
+
 	app.get("/hooks/ping", function(req, res) {
 		rooms.pingMessage("ping:" + req.query['service'], {"text" : req.query['message']});
 		res.end("ok ping:" + req.query['service']);

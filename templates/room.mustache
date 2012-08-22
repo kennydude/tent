@@ -21,7 +21,7 @@
 						<input type="checkbox" id="lock_room" />
 						Lock Room <abbr title="Prevents new people joining">?</abbr>
 					</label>
-					<h6>Feeds <abbr title="you can subscribe to feeds that are pushed to this tent">?</abbr></h6>
+					<h6>Hooks <abbr title="you can subscribe to hooks that are pushed to this tent">?</abbr> <a href="/hooks/docs" target="_blank">docs</a></h6>
 					<input type="text" id="sub_feed" placeholder="e.g: github:kennydude/tent" />
 					<div id="feeds">
 					</div>
@@ -30,6 +30,10 @@
 			<li class="me">
 				<div class="title">You</div>
 				<div class="content">
+					<label for="multiline">
+						<input type="checkbox" id="multiline" />
+						Multi-line <abbr title="Turns on the multi-line editor">?</abbr>
+					</label>
 					<div class="row collapse">
 						<div class="three mobile-one columns">
 							<span class="prefix">nick:</span>
@@ -83,8 +87,15 @@
 	</div>
 </div>
 <%={{ }}=%>
-<div id="composer_box">
+<div class="composer_box singleLine">
 	<input type="text" id="composer" placeholder="talk here" />
+</div>
+<div class="composer_box multilineEd hide">
+	<div class="row"><div class="eleven columns">
+		<textarea id="multilineEd" placeholder="talk here"></textarea>
+	</div><div class="one column">
+		<button id="send_multiline" class="button">Send</button>
+	</div></div>
 </div>
 <div id="kickModal" class="reveal-modal">
   <h2>Kick user?</h2>
@@ -140,6 +151,21 @@ var socketReady = function() {
 		});	
 		var reqTemplate = Hogan.compile($(".reqTemplate").html());
 		var feedTemplate = Hogan.compile($(".feedTemplate").html());
+
+		$("#multiline").on("change", function() {
+			mline = $("#multiline").attr("checked") != undefined;
+			if(mline){
+				$(".singleLine").hide();
+				$(".multilineEd").show();
+			} else{
+				$(".singleLine").show();
+				$(".multilineEd").hide();
+			}
+		});
+		$("#send_multiline").click(function() {
+			socket.emit("msg", {"message":$("#multilineEd").val()});
+			$("#multilineEd").val("");
+		});
 
 		$("#nickname").on("keydown", function(e){
 			if(e.keyName() == "\r"){

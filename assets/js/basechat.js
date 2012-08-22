@@ -1,10 +1,11 @@
 // Basic Chat. Shared betweet /view and /room
+include("/assets/showdown.js");
 
 var chatTemplate = Hogan.compile('<div class="chatRow">'+
 		'<div class="theRow">' + 
 			'{{#is_hook}}<img src="/assets/bell.png" class="hf" title="This was sent by a feed that this room is subscribed to" /> {{/is_hook}}'+
 			'{{#label}}<strong>{{ label }}</strong>: {{/label}}'+
-			'{{#nickname}}<strong>{{ nickname }}:</strong>{{/nickname}} {{ message }}{{ data.html }}' +
+			'{{#nickname}}<strong>{{ nickname }}:</strong>{{/nickname}} {{& message }}{{ data.html }}' +
 			'{{^data.html}}{{ data.text }}{{/data.html}}' +
 			'{{#image}}<img src="{{& image }}" />{{/image}}' +
 			'{{#file}}<a href="{{file}}" target="_blank">attached a file {{filename}}</a>{{/file}}' +
@@ -37,6 +38,12 @@ function colorHash(str){
 }
 
 function addMsg(data){
+	if(data['message']){
+		np = false;
+		if(data['message'].split("\n").length >= 1){ np = true; }
+		data['message'] = Showdown.parse(data['message']);
+		if(np){ data['message'] = data['message'].replaceAll("<p>", "").replaceAll("</p>", ""); }
+	}
 	d = $("<div>").html(chatTemplate.render(data)).appendTo("#thechat");
 	if(data.history != undefined){
 		d.addClass("old");

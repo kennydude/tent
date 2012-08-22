@@ -116,7 +116,7 @@ fs.exists(__dirname + "/assets/live", function(exists) {
 		for(file in files){
 			(function(path) {
 				fs.readFile(__dirname + "/assets/other/" + path, function(err, data) {
-					assetcache[ path ] = data.toString();
+					assetcache[ path ] = data;
 				});
 			})(files[file]);
 		}
@@ -139,7 +139,7 @@ function view(req, res, data, template){
 }
 
 require("./admin.js")(app, view, rooms);
-require("./hooks.js")(app, rooms);
+require("./hooks.js")(app, rooms, view);
 
 app.get("/", function(req,res){
 	msg = undefined;
@@ -242,16 +242,13 @@ app.get("/outside/:room", function(req,res){
 var mime = require("mime");
 app.get("/assets/:file", function(req,res){
 	path = req.params.file;
-	sendCache(req, res, path);
-});
-function sendCache (req, res, path) {
 	if(assetcache[path] != undefined){
 		res.type(mime.lookup(path));
 		res.end(assetcache[path]);
 	} else{
 		res.status(404).end("404");
 	}
-}
+});
 
 app.get("/view/:room", function(req,res){
 	view(req,res,{"status":"ok", "room" : req.params.room},"view");
