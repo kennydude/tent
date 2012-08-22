@@ -1,12 +1,14 @@
 <h1>{{ room }}</h1>
 <h6 class="public hide">Public on <a href="/view/{{ room }}">/view/{{ room }}</a></h6>
 <div class="hide panel hide-on-connect"><p>You seem to have dropped out. Please wait while we connect you again</p><img src="/assets/wait.gif" /></div>
+<div class="alert-box alert wait">Please wait while we pitch a tent for you...</div>
 <div class="row">
-	<div id="thechat" class="nine columns">
-		
+	<div class="nine columns">
+		<div id="thechat"></div>
+		<div id="bumchat"></div>
 	</div>
 	<div class="three columns">
-		<ul class="accordion">
+		<ul class="accordion rbar">
 			<li class="hide manager">
 				<div class="title"><h5>Manager's controls!</h5></div>
 				<div class="content">
@@ -14,14 +16,15 @@
 						<input type="checkbox" id="public_room" />
 						Public Room <abbr title="Makes this room viewable for the public on /view/{{ room }}">?</abbr>
 					</label>
+					<div class="public hide">Public on <a href="/view/{{ room }}">/view/{{ room }}</a></div>
 					<label for="lock_room">
 						<input type="checkbox" id="lock_room" />
 						Lock Room <abbr title="Prevents new people joining">?</abbr>
 					</label>
 					<h6>Feeds <abbr title="you can subscribe to feeds that are pushed to this tent">?</abbr></h6>
 					<input type="text" id="sub_feed" placeholder="e.g: github:kennydude/tent" />
-					<ul id="feeds">
-					</ul>
+					<div id="feeds">
+					</div>
 				</div>
 			</li>
 			<li class="me">
@@ -54,6 +57,7 @@
 				</div>
 			</li>
 		</ul>
+		<div class="show-on-mobile" style="height:50px">&nbsp;</div>
 	</div>
 </div>
 {{=<% %>=}}
@@ -66,6 +70,16 @@
 		{{/info}}
 		<a class="tiny button success allow">ok</a>
 		<a class="tiny button alert deny">no</a>
+	</div>
+</div>
+<div class="feedTemplate hide">
+	<div class="row">
+		<div class="ten columns">
+			{{ name }}
+		</div>
+		<div class="one columns">
+			<a href="#" class="rm" title="stop receiving messages from this feed">x</a>
+		</div>
 	</div>
 </div>
 <%={{ }}=%>
@@ -100,6 +114,18 @@ function updateR(){
 		$(".noRequests").hide();
 	}
 }
+function viewport() {
+	var e = window, a = 'inner';
+	if ( !( 'innerWidth' in window ) ){
+		a = 'client';
+		e = document.documentElement || document.body;
+	}
+	return { width : e[ a+'Width' ] , height : e[ a+'Height' ] }
+}
+
+function safe_feed(f){
+	return f.replaceAll(":", "_").replaceAll("/", "_");
+}
 
 sockets();
 var socketReady = function() {
@@ -113,6 +139,8 @@ var socketReady = function() {
 			$("#kickModal").trigger("reveal:close");
 		});	
 		var reqTemplate = Hogan.compile($(".reqTemplate").html());
+		var feedTemplate = Hogan.compile($(".feedTemplate").html());
+
 		$("#nickname").on("keydown", function(e){
 			if(e.keyName() == "\r"){
 				socket.emit("nick", {"new": $("#nickname").val()});
@@ -153,10 +181,14 @@ var socketReady = function() {
 			document.location.href = "/?kicked";
 		});
 		socket.on("newfeed", function(data) {
-			f = $("<li>").text(data.feed).appendTo($("#feeds"));
-			$("<a>").text("rm").appendTo(f).click(function() {
-				socket.emit("rmfeed", {"feed" : data.feed})
+			f = $("<div>").attr("id", "feed-" + safe_feed(data.feed)).html(feedTemplate.render({"name":data.feed})).appendTo("#feeds");
+			$(".rm", f).click(function() {
+				socket.emit("rmfeed", {"feed" : data.feed});
+				$(this).closest(".row").addClass("grey");
 			}).data("feed", data.feed);
+		});
+		socket.on("rmfeed", function(data) {
+			$("#feed-" + safe_feed(data.feed)).remove();
 		});
 
 		socket.on("nock", function(data){
@@ -180,6 +212,7 @@ var socketReady = function() {
 		if (window.File && window.FileReader && window.FileList && window.Blob && window.Image) {
 			include("/assets/chatfiles.js");
 		}
+		$(".wait").hide();
 	});
 };
 

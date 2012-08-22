@@ -13,9 +13,18 @@ function Tents(io){
 
 Tents.prototype.subscribeToFeed = function(label, room) {
 	if(this.subscribed[label] == undefined) this.subscribed[label] = [];
+	if(this.subscribed[label].indexOf(room) != -1) return;
 	this.subscribed[label].push(room);
 	this.getRoom(room, function() {
 		r.broadcastMessage("newfeed", {"feed" : label});
+	});
+};
+Tents.prototype.unsubscribeToFeed = function(label, room) {
+	if(this.subscribed[label] == undefined) return;
+	f = this.subscribed[label].indexOf(room);
+	delete this.subscribed[label][f];
+	this.getRoom(room, function() {
+		r.broadcastMessage("rmfeed", {"feed":label});
 	});
 };
 
@@ -27,7 +36,8 @@ Tents.prototype.pingMessage = function(label, data) {
 				r.broadcastMessage("msg", {
 					"type" : "hook",
 					"label" : label,
-					"data" : data
+					"data" : data,
+					"is_hook" : true
 				});
 			});
 		}

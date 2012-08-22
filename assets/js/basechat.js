@@ -1,25 +1,26 @@
 // Basic Chat. Shared betweet /view and /room
 
-var chatTemplate = Hogan.compile('<div class="row chatRow">'+
-'		<div class="theRow ten columns">' + 
-'			{{#label}}<strong>{{ label }}</strong>: {{/label}}'+
-'			{{#nickname}}<strong>{{ nickname }}:</strong>{{/nickname}} {{ message }}{{ html }}' +
-'			{{^html}}{{ text }}{{/html}}' +
-'			{{#image}}<img src="{{& image }}" />{{/image}}' +
-'			{{#file}}<a href="{{file}}" target="_blank">attached a file {{filename}}</a>{{/file}}' +
-'		</div>' +
-'	</div>');
+var chatTemplate = Hogan.compile('<div class="chatRow">'+
+		'<div class="theRow">' + 
+			'{{#is_hook}}<img src="/assets/bell.png" class="hf" title="This was sent by a feed that this room is subscribed to" /> {{/is_hook}}'+
+			'{{#label}}<strong>{{ label }}</strong>: {{/label}}'+
+			'{{#nickname}}<strong>{{ nickname }}:</strong>{{/nickname}} {{ message }}{{ data.html }}' +
+			'{{^data.html}}{{ data.text }}{{/data.html}}' +
+			'{{#image}}<img src="{{& image }}" />{{/image}}' +
+			'{{#file}}<a href="{{file}}" target="_blank">attached a file {{filename}}</a>{{/file}}' +
+		'</div>' +
+	'</div>');
 
 var userTemplate = Hogan.compile('<div class="row nickname">' +
-'		<div class="ten columns">' + 
-'			{{ nickname }}' +
-'		</div>' +
-'		<div class="manager hide">' +
-'			<a class="kick" href="#">kick</a>' +
-'			<a class="demote hide" href="#">demote</a>' +
-'			<a class="promote hide" title="make a manager" href="#">promote</a>' +
-'		</div>' +
-'	</div>');
+		'<div class="eight columns">' + 
+			'{{ nickname }}' +
+		'</div>' +
+		'<div class="manager hide four columns">' +
+			'<a class="kick" href="#">kick</a>' +
+			'<a class="demote hide" href="#">demote</a>' +
+			'<a class="promote hide" title="make a manager" href="#">promote</a>' +
+		'</div>' +
+	'</div>');
 
 function colorHash(str){
 	md5 = hex_md5(str);
@@ -41,7 +42,7 @@ function addMsg(data){
 		d.addClass("old");
 	}
 	$(".theRow", d).css("border-left", "3px solid " + colorHash(data.nickname));
-	document.body.scrollTop = d.offset().top  +d.height();
+	d.get(0).scrollIntoView(true);
 }
 
 function doUEvent(el, data){

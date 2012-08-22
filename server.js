@@ -100,8 +100,8 @@ function minify(file) {
 	fs.readFile(__dirname + "/assets/js/" + file, function(er, data) {
 		ast = jsp.parse(data.toString());
 		ast = pro.ast_squeeze(ast);
-		fs.writeFile(__dirname + "/assets/" + file, pro.gen_code(ast), function() {
-			console.log(file + " minifed");
+		fs.writeFile(__dirname + "/assets/" + file, pro.gen_code(ast), function(err) {
+			console.log(file + " minifed: " + err);
 		});
 	});
 }
@@ -329,6 +329,11 @@ io.of('/room').authorization(function (handshakeData, callback) {
 					rooms.subscribeToFeed(data.feed, d);
 				});
 			});
+			socket.on("rmfeed", function(data) {
+				socket.get("room", function(e, d) {
+					rooms.unsubscribeToFeed(data.feed, d);
+				});
+			})
 
 			socket.on("allow", function(data){
 				socket.get("room", function(e, d){
