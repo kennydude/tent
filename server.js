@@ -97,7 +97,6 @@ console.log("Templates Caching");
 var jsp = require("uglify-js").parser;
 var pro = require("uglify-js").uglify;
 function minify(file) {
-	fs.chmodSync(__dirname + "/assets", 0777);
 	fs.readFile(__dirname + "/assets/js/" + file, function(er, data) {
 		ast = jsp.parse(data.toString());
 		ast = pro.ast_squeeze(ast);
