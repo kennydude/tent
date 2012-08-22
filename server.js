@@ -229,7 +229,7 @@ app.get("/outside/:room", function(req,res){
 });
 
 app.get("/assets/:file", function(req,res){
-	res.download(__dirname+"/assets/" + req.params.file, req.params.file);
+	res.sendfile(__dirname+"/assets/" + req.params.file, req.params.file);
 });
 
 app.get("/view/:room", function(req,res){
