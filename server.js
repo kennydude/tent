@@ -1,6 +1,6 @@
 // Tent
 appPort = process.env['app_port'] || 3000
-appHost = (process.env['HOST'] || "localhost:3000");
+appHost = (process.env['app_host'] || "localhost:3000");
 // You should change this otherwise only me (Joe) can admin your tent!
 admins = (process.env['tent_admins'] || "twitter:21428122").split(",");
 
@@ -92,6 +92,25 @@ fs.readdir(__dirname + "/templates", function(e, files){
 	}
 });
 console.log("Templates Caching");
+
+// Minify
+var jsp = require("uglify-js").parser;
+var pro = require("uglify-js").uglify;
+function minify(file) {
+	fs.readFile(__dirname + "/assets/js/" + file, function(er, data) {
+		ast = jsp.parse(data.toString());
+		ast = pro.ast_squeeze(ast);
+		fs.writeFile(__dirname + "/assets/" + file, pro.gen_code(ast), function() {
+			console.log(file + " minifed");
+		});
+	});
+}
+fs.readdir(__dirname + "/assets/js/", function(er, files) {
+	for(file in files){
+		var file = files[file];
+		minify(file);
+	}
+});
 
 function view(req, res, data, template){
 	if(req.query.format == "json"){
