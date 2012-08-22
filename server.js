@@ -96,13 +96,12 @@ console.log("Templates Caching");
 // Minify
 var jsp = require("uglify-js").parser;
 var pro = require("uglify-js").uglify;
+var assetcache = {};
 function minify(file) {
 	fs.readFile(__dirname + "/assets/js/" + file, function(er, data) {
 		ast = jsp.parse(data.toString());
 		ast = pro.ast_squeeze(ast);
-		fs.writeFile(__dirname + "/assets/live/" + file, pro.gen_code(ast), function(err) {
-			console.log(file + " minifed: " + err);
-		});
+		assetcache[file] = pro.gen_code(ast);
 	});
 }
 fs.exists(__dirname + "/assets/live", function(exists) {
@@ -117,7 +116,7 @@ fs.exists(__dirname + "/assets/live", function(exists) {
 		for(file in files){
 			(function(path) {
 				fs.readFile(__dirname + "/assets/other/" + path, function(err, data) {
-					fs.writeFile(__dirname  +"/assets/live/" + path, data.toString());
+					assetcache[ path ] = data.toString();
 				});
 			})(files[file]);
 		}
@@ -240,22 +239,18 @@ app.get("/outside/:room", function(req,res){
 	view(req,res,{"status":"waiting-to-join","room":req.params.room,"ticket":req.query.ticket,"name":req.query.name},"waiting");
 });
 
-var assetcache = {};
 var mime = require("mime");
 app.get("/assets/:file", function(req,res){
-	path = __dirname + "/assets/live/" + req.params.file;
+	path = req.params.file;
 	sendCache(req, res, path);
 });
 function sendCache (req, res, path) {
-	res.type(mime.lookup(path));
 	if(assetcache[path] != undefined){
+		res.type(mime.lookup(path));
 		res.end(assetcache[path]);
+	} else{
+		res.status(404).end("404");
 	}
-	fs.readFile(path, function(err, file) {
-		if(err){ res.type("text/plain").end("404"); return; }
-		res.end(file);
-		assetcache[path] = file;
-	});
 }
 
 app.get("/view/:room", function(req,res){
