@@ -1,6 +1,6 @@
 // Tent
 appPort = process.env['app_port'] || 3000
-appHost = (process.env['app_host'] || "localhost:3000");
+appHost = (process.env['site'] || "localhost:3000");
 // You should change this otherwise only me (Joe) can admin your tent!
 admins = (process.env['tent_admins'] || "twitter:21428122").split(",");
 
@@ -100,16 +100,28 @@ function minify(file) {
 	fs.readFile(__dirname + "/assets/js/" + file, function(er, data) {
 		ast = jsp.parse(data.toString());
 		ast = pro.ast_squeeze(ast);
-		fs.writeFile(__dirname + "/assets/" + file, pro.gen_code(ast), function(err) {
+		fs.writeFile(__dirname + "/assets/live/" + file, pro.gen_code(ast), function(err) {
 			console.log(file + " minifed: " + err);
 		});
 	});
 }
-fs.readdir(__dirname + "/assets/js/", function(er, files) {
-	for(file in files){
-		var file = files[file];
-		minify(file);
-	}
+fs.exists(__dirname + "/assets/live", function(exists) {
+	if(!exists) fs.mkdir(__dirname + "/assets/live/", function(e) { console.log(e); });
+	fs.readdir(__dirname + "/assets/js/", function(er, files) {
+		for(file in files){
+			var file = files[file];
+			minify(file);
+		}
+	});
+	fs.readdir(__dirname + "/assets/other/", function(er, files) {
+		for(file in files){
+			(function(path) {
+				fs.readFile(__dirname + "/assets/other/" + path, function(err, data) {
+					fs.writeFile(__dirname  +"/assets/live/" + path, data.toString());
+				});
+			})(files[file]);
+		}
+	});
 });
 
 function view(req, res, data, template){
@@ -231,7 +243,7 @@ app.get("/outside/:room", function(req,res){
 var assetcache = {};
 var mime = require("mime");
 app.get("/assets/:file", function(req,res){
-	path = __dirname + "/assets/" + req.params.file;
+	path = __dirname + "/assets/live/" + req.params.file;
 	sendCache(req, res, path);
 });
 function sendCache (req, res, path) {
@@ -240,7 +252,7 @@ function sendCache (req, res, path) {
 		res.end(assetcache[path]);
 	}
 	fs.readFile(path, function(err, file) {
-		if(err){ res.type("text/plain").end("404"); }
+		if(err){ res.type("text/plain").end("404"); return; }
 		res.end(file);
 		assetcache[path] = file;
 	});
