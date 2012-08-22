@@ -228,14 +228,25 @@ app.get("/outside/:room", function(req,res){
 	view(req,res,{"status":"waiting-to-join","room":req.params.room,"ticket":req.query.ticket,"name":req.query.name},"waiting");
 });
 
+var assetcache = {};
+var mime = require("mime");
 app.get("/assets/:file", function(req,res){
-	res.sendfile(__dirname+"/assets/" + req.params.file, req.params.file);
+	path = __dirname + "/assets/" + req.params.file;
+	sendCache(req, res, path);
 });
+function sendCache (req, res, path) {
+	res.type(mime.lookup(path));
+	if(assetcache[path] != undefined){
+		res.end(assetcache[path]);
+	}
+	fs.readFile(path, function(err, file) {
+		if(err){ res.type("text/plain").end("404"); }
+		res.end(file);
+		assetcache[path] = file;
+	});
+}
 
 app.get("/view/:room", function(req,res){
-	//if(!rooms.roomExists(req.params.room)){ do_403(res); return; }
-	//if(!rooms.getRoom(req.params.room).isPublic()){ do_403(res); return; }
-
 	view(req,res,{"status":"ok", "room" : req.params.room},"view");
 });
 
