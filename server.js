@@ -74,7 +74,7 @@ server = http.createServer(app).listen(appPort);
 var io = require('socket.io').listen(server);
 
 // Tents
-var tents = require("./tents");
+var tents = require("./lib/tents");
 var rooms = new tents.Tents(io);
 
 // Templates
@@ -140,6 +140,7 @@ function view(req, res, data, template){
 
 require("./admin.js")(app, view, rooms);
 require("./hooks.js")(app, rooms, view);
+require("./lib/routes/mobile")(app, rooms, view);
 
 app.get("/", function(req,res){
 	msg = undefined;
@@ -337,6 +338,7 @@ io.of('/room').authorization(function (handshakeData, callback) {
 	io.on("ticket-" + socket.handshake.join_room + '-' + socket.handshake.ticket + "-rm", function(){
 		socket.disconnect();
 	});
+	rooms.getTicket(socket.handshake.join_room, socket.handshake.ticket).setupEvents(socket);
 
 	socket.set("nickname", socket.handshake.nick);
 
@@ -345,23 +347,7 @@ io.of('/room').authorization(function (handshakeData, callback) {
 			socket.join("manager-" + socket.handshake.join_room);
 			socket.emit("manager",{});
 
-			socket.on("set_option", function(data) {
-				rooms.getRoom(socket.handshake.join_room, function(room) {
-					room.options[data.option] = data.value;
-					room.broadcastMessage("option", data);
-				});
-			});
-
-			socket.on("sub_feed", function(data) {
-				socket.get("room", function(e, d){
-					rooms.subscribeToFeed(data.feed, d);
-				});
-			});
-			socket.on("rmfeed", function(data) {
-				socket.get("room", function(e, d) {
-					rooms.unsubscribeToFeed(data.feed, d);
-				});
-			})
+			
 
 			socket.on("allow", function(data){
 				socket.get("room", function(e, d){
@@ -377,14 +363,7 @@ io.of('/room').authorization(function (handshakeData, callback) {
 				});
 			});
 
-			socket.on("kick", function(data){
-				socket.get("room", function(e, d){
-					rooms.getRoom(d, function(room) {
-						room.removeTicket(data.ticket);
-						room.broadcastMessage("goodbye", {"ticket":data.ticket});
-					});
-				});
-			});
+			
 
 			socket.on("public", function(data) {
 				socket.get("room", function(e, d){
@@ -426,26 +405,6 @@ io.of('/room').authorization(function (handshakeData, callback) {
 				h['history'] = true;
 				socket.emit("msg", h);
 			}
-		});
-	});
-	
-	socket.on("msg", function(data){
-		socket.get("room", function(e, d){
-			socket.get("nickname", function(e, nick){
-				data['nickname'] = nick;
-				rooms.getRoom(d, function(room) {
-					room.pushHistory(data);
-					room.broadcastMessage("msg", data);
-				});
-			});
-		});
-	});
-	socket.on("nick", function(data){
-		socket.get("room", function(e, d){
-			socket.set("nickname", data.new);
-			rooms.getRoom(d, function(room) {
-				room.broadcastMessage("rename", {"ticket": socket.handshake.ticket, "nickname":data.new});
-			});
 		});
 	});
 
