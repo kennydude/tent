@@ -82,12 +82,26 @@ include(["/assets/jquerypp.js", "/assets/hogan.js", "/assets/md5.js", "/assets/j
 			$(".public").hide();
 		}
 	});
-	$("#lock_room").on("change",function() {
-		socket.emit("lock", {"lock" : $("#lock_room").attr("checked") != undefined});
+	
+	$(".option").on("change", function() {
+		val = $(this).val();
+		if($(this).attr("type") == "checkbox"){
+			val=$(this).attr("checked")!=undefined;
+		}
+		socket.emit("set_option", {"option":$(this).data("option"),"value":val})
+	});
+	socket.on("option", function(data) {
+		if(typeof(data.value) == "boolean"){
+			if(data.value == true){
+				$("input[data-option=" + data.option + "]").attr("checked", "checked");
+			} else{
+				$("input[data-option=" + data.option + "]").removeAttr("checked");
+			}
+		}
 	});
 
 	socket.on("manager", function(){
-		$("<style>").html(".manager{display:block !important;}").appendTo("head");
+		$("<style>").attr("id", "managerStyle").html(".manager{display:block !important;}").appendTo("head");
 	});
 	socket.on("kick", function(){
 		document.location.href = "/?kicked";

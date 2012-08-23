@@ -189,6 +189,11 @@ app.get("/room/:id", function(req,res){
 	view(req,res,{"status":"ok","now":"connect to websocket","ticket":req.query.ticket,"room":req.params.id,"port":appPort,"name":req.query.name},"room");
 });
 
+function stamp_and_enter(room, ticket, res, req){
+	ticket.stampEntry();
+	res.redirect("/room/" + req.query.room + "?ticket=" + ticket.getName() + "&name=" + req.query.name);
+}
+
 app.get("/bouncer", function(req,res){
 	rooms.emptyRoom(req.query.room, function(empty, room){
 		if(empty){
@@ -205,14 +210,15 @@ app.get("/bouncer", function(req,res){
 			if(req.query.sure != undefined){
 				rooms.getRoom(req.query.room, function(room) {
 					ticket = room.newTicket(req.user);
+					console.log(room.options);
 					if(ticket == null || ticket == undefined){ res.redirect("/?notickets"); return; }
 					if(req.user != undefined){if( req.user.is_admin == true){
 						// Admin is required entry
-						ticket.stampEntry();
 						ticket.makeManager();
-
-						res.redirect("/room/" + req.query.room + "?ticket=" + ticket.getName() + "&name=" + req.query.name);
-					}} else{
+						stamp_and_enter(room, ticket, res, req);
+					}} else if(room.options['doors_open'] == true){
+						stamp_and_enter(room, ticket, res, req);
+					} else{
 
 						io.of('/room').in("manager-" + req.query.room).emit("nock", {
 							"ticket":ticket.getName(),
@@ -339,6 +345,13 @@ io.of('/room').authorization(function (handshakeData, callback) {
 			socket.join("manager-" + socket.handshake.join_room);
 			socket.emit("manager",{});
 
+			socket.on("set_option", function(data) {
+				rooms.getRoom(socket.handshake.join_room, function(room) {
+					room.options[data.option] = data.value;
+					room.broadcastMessage("option", data);
+				});
+			});
+
 			socket.on("sub_feed", function(data) {
 				socket.get("room", function(e, d){
 					rooms.subscribeToFeed(data.feed, d);
@@ -369,14 +382,6 @@ io.of('/room').authorization(function (handshakeData, callback) {
 					rooms.getRoom(d, function(room) {
 						room.removeTicket(data.ticket);
 						room.broadcastMessage("goodbye", {"ticket":data.ticket});
-					});
-				});
-			});
-
-			socket.on("lock", function(data) {
-				socket.get("room", function(e, d){
-					rooms.getRoom(d,function(room) {
-						room.allow_new_tickets = !data.lock;
 					});
 				});
 			});

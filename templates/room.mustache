@@ -18,8 +18,12 @@
 					</label>
 					<div class="public hide">Public on <a href="/view/{{ room }}">/view/{{ room }}</a></div>
 					<label for="lock_room">
-						<input type="checkbox" id="lock_room" />
+						<input type="checkbox" id="lock_room" class="option" data-option="no_new_tickets" />
 						Lock Room <abbr title="Prevents new people joining">?</abbr>
+					</label>
+					<label for="doors_open">
+						<input type="checkbox" id="doors_open" class="option" data-option="doors_open" />
+						Open the doors <abbr title="Allows anyone to join in the chat">?</abbr>
 					</label>
 					<h6>Hooks <abbr title="you can subscribe to hooks that are pushed to this tent">?</abbr> <a href="/hooks/docs" target="_blank">docs</a></h6>
 					<input type="text" id="sub_feed" placeholder="e.g: github:kennydude/tent" />

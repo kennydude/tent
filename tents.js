@@ -141,9 +141,12 @@ function Room(tent, room_name, setupcallback){
 	this.tent = tent;
 	this.room_name = room_name;
 	this.tickets = [];
-	this.public = false;
+	this.options = {
+		"public" : false,
+		"doors_open" : false,
+		"no_new_tickets" : false
+	};
 	this.history = [];
-	this.allow_new_tickets = true;
 
 	var self = this;
 	getReservedDeta(room_name, function(rdata){
@@ -177,11 +180,11 @@ Room.prototype.removeHistory = function() {
 };
 
 Room.prototype.isPublic = function() {
-	return this.public;
+	return this.options['public'];
 };
 
 Room.prototype.makePublic = function(public) {
-	this.public = public;
+	this.options['public'] = public;
 };
 
 Room.prototype.getTicket = function(ticket) {
@@ -257,7 +260,7 @@ Room.prototype.newTicket = function(user) {
 				return null;
 			}
 		}
-	} else if(this.allow_new_tickets == false){
+	} else if(this.options['no_new_tickets'] == true){
 		if(user != undefined){ if(user.is_admin != true){ return null; } }
 		else{ return null; }
 	}
