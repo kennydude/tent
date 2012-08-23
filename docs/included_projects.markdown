@@ -11,7 +11,7 @@ I've used lots of little things to make Tent work wonderfully
 
 # Node Libraries
 
-* [Passport) (and passport-twitter](http://passportjs.org)
+* [Passport (and passport-twitter) ](http://passportjs.org)
 * [Express.js](http://expressjs.com)
 * [MIME](https://npmjs.org/package/mime)
 * [Uglify-JS](http://marijnhaverbeke.nl//uglifyjs)
@@ -19,7 +19,7 @@ I've used lots of little things to make Tent work wonderfully
 
 # Other Usages
 
-* [Glyphicons I have a PRO license, so I'm free to use them :](http://glyphicons.com)
+* [Glyphicons I have a PRO license, so I'm free to use them :)](http://glyphicons.com)
 
 # Ideas from
 
