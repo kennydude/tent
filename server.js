@@ -3,13 +3,21 @@ appPort = process.env['app_port'] || 3000
 appHost = (process.env['site'] || "localhost:3000");
 // You should change this otherwise only me (Joe) can admin your tent!
 admins = (process.env['tent_admins'] || "twitter:21428122").split(",");
+// To scale beyond a tiny tiny instance you NEED to change this too!
+var data_store = process.env['store'] || "file";
+data_store = (function(s){
+	if(s == "file"){
+		return new require("./lib/stores/file.js")({"folder":__dirname+"/sessions"});
+	} else if(s.indexOf("couchdb") == 0){
+		return undefined; // TODO
+	}
+})(data_store);
 
 var express = require('express');
 var app = express();
 
 // Auth
 var passport = require('passport'),
-	SessionStore = require("./connectfilestore.js"),
 	TwitterStrategy = require('passport-twitter').Strategy;
 passport.serializeUser(function(user, done) {
 	done(null, user);
@@ -48,7 +56,7 @@ app.configure(function() {
 			next();
 		}
 	});
-	cookiemiddle.push(express.session({store:new SessionStore(({"folder":__dirname+"/sessions"})) }));
+	cookiemiddle.push(express.session({store: data_store }));
 	cookiemiddle.push(passport.initialize());
 	cookiemiddle.push(passport.session());
 	cookiemiddle.push(function(req, res, next) {
@@ -204,6 +212,7 @@ app.get("/bouncer", function(req,res){
 				if(ticket == null || ticket == undefined){ res.redirect("/?notickets"); return; }
 				ticket.stampEntry();
 				ticket.makeManager();
+				ticket.nickname = req.query.name;
 
 				res.redirect("/room/" + req.query.room + "?ticket=" + ticket.getName() + "&name=" + req.query.name);
 			});
@@ -211,6 +220,7 @@ app.get("/bouncer", function(req,res){
 			if(req.query.sure != undefined){
 				rooms.getRoom(req.query.room, function(room) {
 					ticket = room.newTicket(req.user);
+					ticket.nickname = req.query.name;
 					console.log(room.options);
 					if(ticket == null || ticket == undefined){ res.redirect("/?notickets"); return; }
 					if(req.user != undefined){if( req.user.is_admin == true){

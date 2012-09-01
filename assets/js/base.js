@@ -34,8 +34,8 @@ if(window.socketReady != undefined){ window.socketReady(); }
 
 function globalnotice(msg){
 	if(window.gtout != undefined){ clearTimeout(gtout); }
-	$(".globalnotice").html(msg).show();
+	$("#globalnotice").html(msg).show();
 	var gtout = setTimeout(function(){
-		$(".globalnotice").fadeOut();
+		$("#globalnotice").fadeOut();
 	}, 3000);
 }

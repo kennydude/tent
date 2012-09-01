@@ -21,6 +21,19 @@ function safe_feed(f){
 	return f.replaceAll(":", "_").replaceAll("/", "_");
 }
 
+var Stop = $('#navBar').offset().top - parseFloat($('#navBar').css('marginTop').replace(/auto/, 0));
+$("#navBar").css("width", $("#navBar").width());
+$(window).scroll(function(){
+	var y = $(this).scrollTop();
+	if (y >= Stop) {
+		// if so, ad the fixed class
+		$('#navBar').addClass('fixed');
+	} else {
+		// otherwise remove it
+		$('#navBar').removeClass('fixed');
+	}
+});
+
 include(["/assets/jquerypp.js", "/assets/hogan.js", "/assets/md5.js", "/assets/jquery.foundation.reveal.js"], function() {
 
 	include("/assets/jquery.foundation.accordion.js", function() {
