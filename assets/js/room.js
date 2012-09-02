@@ -117,7 +117,7 @@ include(["/assets/jquerypp.js", "/assets/hogan.js", "/assets/md5.js", "/assets/j
 		$("<style>").attr("id", "managerStyle").html(".manager{display:block !important;}").appendTo("head");
 	});
 	socket.on("kick", function(){
-		document.location.href = "/?kicked";
+		document.location.href = "/?kicked&room=" + room;
 	});
 	socket.on("newfeed", function(data) {
 		f = $("<div>").attr("id", "feed-" + safe_feed(data.feed)).html(feedTemplate.render({"name":data.feed})).appendTo("#feeds");

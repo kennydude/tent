@@ -14,17 +14,15 @@
 				<div class="content">
 					<label for="public_room">
 						<input type="checkbox" id="public_room" />
-						Public Room <abbr title="Makes this room viewable for the public on /view/{{ room }}">?</abbr>
+						Publically viewable Room <abbr title="Makes this room viewable for the public on /view/{{ room }}">?</abbr>
 					</label>
 					<div class="public hide">Public on <a href="/view/{{ room }}">/view/{{ room }}</a></div>
-					<label for="lock_room">
-						<input type="checkbox" id="lock_room" class="option" data-option="no_new_tickets" />
-						Lock Room <abbr title="Prevents new people joining">?</abbr>
-					</label>
-					<label for="doors_open">
-						<input type="checkbox" id="doors_open" class="option" data-option="doors_open" />
-						Open the doors <abbr title="Allows anyone to join in the chat">?</abbr>
-					</label>
+					<label for="privacy"><strong>Privacy</strong></label>
+					<select id="privacy" data-option="privacy" class="option">
+						<option value="no">Lock room</option>
+						<option value="nock" selected>Nock to enter (default)</option>
+						<option value="open">Open house!</option>
+					</select>
 					<h6>Hooks <abbr title="you can subscribe to hooks that are pushed to this tent">?</abbr> <a href="/hooks/docs" target="_blank">docs</a></h6>
 					<input type="text" id="sub_feed" placeholder="e.g: github:kennydude/tent" />
 					<div id="feeds">
@@ -119,6 +117,7 @@
 moreRoom = "/room";
 var myNickName = "{{ name }}";
 var myTicket = "{{ ticket }}";
+var room = "{{ room }}";
 sockets();
 var socketReady = function() {
 	include(["/assets/showdown.js","/assets/room.js"]);

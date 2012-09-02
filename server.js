@@ -164,7 +164,7 @@ app.get("/", function(req,res){
 		msg = "Hi there " + req.user.name;
 		msgClass = "success";
 	}
-	data = {"status":"ok","message":msg, "message_type" : msgClass};
+	data = {"status":"ok","message":msg, "message_type" : msgClass,"join":req.query.room};
 	if(req.user){
 		data['userid'] = req.user.id;
 		data['username'] = req.user.name;
@@ -200,46 +200,44 @@ app.get("/room/:id", function(req,res){
 
 function stamp_and_enter(room, ticket, res, req){
 	ticket.stampEntry();
-	res.redirect("/room/" + req.query.room + "?ticket=" + ticket.getName() + "&name=" + req.query.name);
+	res.redirect("/room/" + room.room_name + "?ticket=" + ticket.getName() + "&name=" + req.query.name);
 }
 
 app.get("/bouncer", function(req,res){
 	rooms.emptyRoom(req.query.room, function(empty, room){
 		if(empty){
 			// new room
-			rooms.newRoom(req.query.room, function(room) {
-				ticket = room.newTicket(req.user);
-				if(ticket == null || ticket == undefined){ res.redirect("/?notickets"); return; }
-				ticket.stampEntry();
-				ticket.makeManager();
-				ticket.nickname = req.query.name;
-
-				res.redirect("/room/" + req.query.room + "?ticket=" + ticket.getName() + "&name=" + req.query.name);
-			});
+			ticket = room.newTicket(req.user);
+			if(ticket == null || ticket == undefined){ res.redirect("/?notickets"); return; }
+			ticket.stampEntry();
+			ticket.makeManager();
+			ticket.nickname = req.query.name;
+	
+			stamp_and_enter(room, ticket, res, req);
+			//res.redirect("/room/" + req.query.room + "?ticket=" + ticket.getName() + "&name=" + req.query.name);
 		} else{
 			if(req.query.sure != undefined){
-				rooms.getRoom(req.query.room, function(room) {
-					ticket = room.newTicket(req.user);
-					ticket.nickname = req.query.name;
-					console.log(room.options);
-					if(ticket == null || ticket == undefined){ res.redirect("/?notickets"); return; }
-					if(req.user != undefined){if( req.user.is_admin == true){
-						// Admin is required entry
-						ticket.makeManager();
-						stamp_and_enter(room, ticket, res, req);
-					}} else if(room.options['doors_open'] == true){
-						stamp_and_enter(room, ticket, res, req);
-					} else{
+				ticket = room.newTicket(req.user);
+				ticket.nickname = req.query.name;
+				//console.log(room.options);
+				if(ticket == null || ticket == undefined){ res.redirect("/?notickets"); return; }
+				if(req.user != undefined){if( req.user.is_admin == true){
+					// Admin is required entry
+					ticket.stampEntry();
+					ticket.makeManager();
+					stamp_and_enter(room, ticket, res, req);
+				}} else if(room.options['doors_open'] == true){
+					stamp_and_enter(room, ticket, res, req);
+				} else{
 
-						io.of('/room').in("manager-" + req.query.room).emit("nock", {
-							"ticket":ticket.getName(),
-							"nickname":req.query.name,
-							"info":req.query.info
-						});
-						
-						res.redirect("/outside/" + req.query.room + "?ticket=" + ticket.getName() + "&name=" + req.query.name);
-					}
-				});
+					io.of('/room').in("manager-" + req.query.room).emit("nock", {
+						"ticket":ticket.getName(),
+						"nickname":req.query.name,
+						"info":req.query.info
+					});
+					
+					res.redirect("/outside/" + req.query.room + "?ticket=" + ticket.getName() + "&name=" + req.query.name);
+				}
 			} else{
 				view(req, res, {"status" : "exists", "room" : req.query.room, "name": req.query.name,"info":req.query.info}, "exists");
 			}
@@ -251,7 +249,7 @@ app.get("/outside/:room", function(req,res){
 	if(rooms.canGainEntry(req.params.room, req.query.ticket, false)){
 		res.redirect("/rooms/" + req.params.room + "?ticket=" + req.query.ticket + "&name=" + req.query.name);
 	}
-	if(!rooms.ticketExists(req.params.room, req.query.ticket)){ do_403(); return; }
+	if(!rooms.ticketExists(req.params.room, req.query.ticket)){ do_403(res); return; }
 
 	view(req,res,{"status":"waiting-to-join","room":req.params.room,"ticket":req.query.ticket,"name":req.query.name},"waiting");
 });
@@ -420,13 +418,9 @@ io.of('/room').authorization(function (handshakeData, callback) {
 
 	socket.on('disconnect', function() {
 		var ticket = socket.handshake.ticket;
-		socket.get("room", function(e, d){
-			process.nextTick(function() {
-				rooms.getRoom(d, function(room) {
-					room.broadcastMessage( "goodbye", {"ticket":ticket});
-					try{ rooms.removeTicket(d,ticket); } catch(e){console.log(e);}
-				});
-			});
+		rooms.getRoom(socket.handshake.join_room, function(room) {
+			room.broadcastMessage( "goodbye", {"ticket":ticket});
+			try{ rooms.removeTicket(d,ticket); } catch(e){console.log(e);}
 		});
 	});
 });

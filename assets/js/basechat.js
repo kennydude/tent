@@ -1,6 +1,8 @@
 // Basic Chat. Shared betweet /view and /room
 include("/assets/showdown.js");
 
+document.title = "The Tent called " + room;
+
 var chatTemplate = Hogan.compile('<div class="chatRow">'+
 		'<div class="theRow">' + 
 			'{{#is_hook}}<img src="/assets/bell.png" class="hf" title="This was sent by a feed that this room is subscribed to" /> {{/is_hook}}'+
